@@ -7,6 +7,7 @@ import Avatar from "./Avatar.vue";
 import CopyText from "./CopyText.vue";
 import FileDiff from "./FileDiff.vue";
 import FileIcon from "./FileIcon.vue";
+import FilePath from "./FilePath.vue";
 import LinkedText from "./LinkedText.vue";
 import RefName from "./RefName.vue";
 import { howCommitted, readMessage } from "../lib/commitMessage.js";
@@ -277,11 +278,6 @@ function followHeading() {
 }
 // Another commit starts at its top, the bar gone.
 watch(details, () => (pinned.value = 0));
-
-function splitPath(path) {
-  const slash = path.lastIndexOf("/");
-  return { dir: path.slice(0, slash + 1), name: path.slice(slash + 1) };
-}
 </script>
 
 <template>
@@ -380,12 +376,7 @@ function splitPath(path) {
                 <span class="status" :class="file.status">{{ file.status }}</span>
                 <span class="badge" :class="file.status">{{ STATUS_LETTER[file.status] }}</span>
                 <FileIcon :name="file.path" :size="15" />
-                <span class="file-path" :title="file.old_path ? `${file.old_path} → ${file.path}` : file.path">
-                  <template v-if="file.old_path">
-                    <span class="dim">{{ file.old_path }} →</span>
-                  </template>
-                  <span class="dim">{{ splitPath(file.path).dir }}</span>{{ splitPath(file.path).name }}
-                </span>
+                <FilePath :path="file.path" :old-path="file.old_path" />
                 <span v-if="file.binary" class="counts dim">binary</span>
                 <span v-else-if="details.counted" class="counts">
                   <span v-if="file.additions" class="plus">+{{ file.additions }}</span>
@@ -664,13 +655,6 @@ function splitPath(path) {
 
 :root[data-inactive] .minus {
   color: color-mix(in srgb, var(--diff-removed-text) 30%, var(--accent));
-}
-
-.file-path {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .counts {

@@ -9,6 +9,7 @@ import { commandKey, fileManager, isMac, shortcut } from "../lib/platform.js";
 import { useIssueSuggestions } from "../lib/issueSuggestions.js";
 import IssueSuggestions from "./IssueSuggestions.vue";
 import FileIcon from "./FileIcon.vue";
+import FilePath from "./FilePath.vue";
 import { useWindowed } from "../lib/windowed.js";
 import { onSavedElsewhere, writeJson } from "../lib/storage.js";
 import { TREE_KEY, listsAsTree } from "../lib/workingOrder.js";
@@ -592,12 +593,6 @@ const STATUS_LETTER = {
 // What the badge shows: a conflict first, then the unstaged change, then the staged one.
 const statusOf = (file) => (file.conflicted ? "conflicted" : (file.unstaged ?? file.staged));
 
-// A repository inside this one, "nested/", is named with its slash.
-function splitPath(path) {
-  const slash = path.lastIndexOf("/", path.length - 2);
-  return { dir: path.slice(0, slash + 1), name: path.slice(slash + 1) };
-}
-
 const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
 </script>
 
@@ -677,10 +672,7 @@ const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
               <span class="badge" :class="statusOf(row.file)" :title="statusOf(row.file)">{{ STATUS_LETTER[statusOf(row.file)] }}</span>
               <span v-if="asTree" class="indent" :style="{ width: `${row.depth * 16 + 22}px` }" />
               <FileIcon :name="row.file.path" :size="15" />
-              <span class="file-path" :title="row.file.old_path ? `${row.file.old_path} → ${row.file.path}` : row.file.path">
-                <span v-if="row.file.old_path" class="dim">{{ row.file.old_path }} → </span>
-                <span v-if="!asTree" class="dim">{{ splitPath(row.file.path).dir }}</span>{{ splitPath(row.file.path).name }}
-              </span>
+              <FilePath :path="row.file.path" :old-path="row.file.old_path" :with-folder="!asTree" />
               <button
                 class="icon-button small discard"
                 title="Discard Changes…"
