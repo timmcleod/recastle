@@ -11,6 +11,7 @@ import IssueSuggestions from "./IssueSuggestions.vue";
 import FileIcon from "./FileIcon.vue";
 import FilePath from "./FilePath.vue";
 import { useWindowed } from "../lib/windowed.js";
+import { useOverflows } from "../lib/overflows.js";
 import { onSavedElsewhere, writeJson } from "../lib/storage.js";
 import { TREE_KEY, listsAsTree } from "../lib/workingOrder.js";
 
@@ -594,6 +595,9 @@ const STATUS_LETTER = {
 const statusOf = (file) => (file.conflicted ? "conflicted" : (file.unstaged ?? file.staged));
 
 const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
+const changedCount = computed(() => plural(files.value?.length ?? 0, "changed file"));
+const countLabel = ref(null);
+const countHidden = useOverflows(countLabel, () => changedCount.value);
 </script>
 
 <template>
@@ -601,7 +605,7 @@ const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
     <div v-if="files?.length" class="list-bar">
       <span class="bar-count">
         <button class="icon-button small" title="View Options" @click="viewMenu"><SlidersHorizontal :size="14" /></button>
-        {{ plural(files.length, "changed file") }}
+        <span ref="countLabel" class="count-label" :class="{ unfit: countHidden }">{{ changedCount }}</span>
       </span>
       <span class="bar-actions">
         <button class="link-button" :disabled="busy || !unstagedFiles.length" @click="stageAll">Stage All</button>
@@ -764,10 +768,24 @@ const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
 .bar-count {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 6px;
   margin-left: -6px;
+}
+
+/* The count goes, rather than squeeze the buttons beside it or show part of itself. */
+.count-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.count-label.unfit {
+  visibility: hidden;
 }
 
 .indent {
@@ -798,6 +816,8 @@ const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
 .bar-actions {
   display: flex;
   gap: 14px;
+  margin-left: 14px;
+  white-space: nowrap;
 }
 
 .link-button {
