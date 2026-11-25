@@ -93,7 +93,7 @@ describe("where an environment variable goes", () => {
       ];
     });
     expect((await destinations(path, "config/app.php", "", env("APP_NAME", "set"), 16)).map((p) => p.file)).toEqual([".env", ".env.example"]);
-    expect(searches()[0]).toMatchObject({ files: [".env", ".env.example"], globs: [], ignored: true });
+    expect(searches()[0]).toMatchObject({ files: [".env", ".env.example"], globs: [], includeIgnored: true });
     // From a .env file's ${APP_NAME}, its own first.
     expect((await destinations(path, ".env.example", "", env("APP_NAME", "set"), 9)).map((p) => p.file)).toEqual([".env.example", ".env"]);
   });
@@ -101,7 +101,7 @@ describe("where an environment variable goes", () => {
   test("set, to where the app reads it, in any file it doesn't ignore", async () => {
     found = [{ file: "config/app.php", line: 16, text: "'name' => env('APP_NAME', 'Laravel')," }];
     expect(await destinations(path, ".env", "", env("APP_NAME", "read"), 2)).toEqual(found);
-    expect(searches()[0]).toMatchObject({ globs: [], files: [], ignored: false });
+    expect(searches()[0]).toMatchObject({ globs: [], files: [], includeIgnored: false });
   });
 
   test("with no .env files, isn't set anywhere, and says so", async () => {

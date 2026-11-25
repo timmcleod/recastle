@@ -77,12 +77,13 @@ function search(path, name, file, files = null) {
 // Where the .env files set the variable `name`: those git ignores too, as .env is.
 async function envSet(path, name) {
   const files = (await repositoryFiles(path, { untracked: true })).filter(isDotenv);
-  return files.length ? find(path, { ...envSetSearch(name), files, ignored: true }) : [];
+  return files.length ? find(path, { ...envSetSearch(name), files, includeIgnored: true }) : [];
 }
 
 // The lines matching `patterns` in the repository at `path`, in `globs` or `files`, as
 // find_definitions has them.
-const find = (path, { patterns, globs = [], files = [], ignored = false }) => invoke("find_definitions", { path, patterns, globs, files, ignored });
+const find = (path, { patterns, globs = [], files = [], includeIgnored = false }) =>
+  invoke("find_definitions", { path, patterns, globs, files, includeIgnored });
 
 // What's said when going to `target` finds nothing.
 function nothingFound(target) {

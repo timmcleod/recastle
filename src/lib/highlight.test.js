@@ -7,6 +7,9 @@ test("a file's language for diffs is by its name or extension, .env files their 
   expect(languageFor(".env")).toBe("dotenv");
   expect(languageFor("config/.env.example")).toBe("dotenv");
   expect(languageFor("deploy/production.env")).toBe("dotenv");
-  expect(languageFor(".envrc")).toBeNull();
+  // direnv's, a shell script.
+  expect(languageFor(".envrc")).toBe("bash");
+  // Code named for .env is code.
+  expect(languageFor(".env.local.php")).toBe("php");
   expect(languageFor("notes")).toBeNull();
 });

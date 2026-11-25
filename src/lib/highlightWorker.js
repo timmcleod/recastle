@@ -1,4 +1,5 @@
 import hljs from "highlight.js/lib/core";
+import { dotenvHtml } from "./dotenv.js";
 
 // Highlights code for lib/highlight.js, away from the page so that big files don't hold
 // it up. Each request is { id, language } with either `blocks` (arrays of lines) or
@@ -16,8 +17,6 @@ const LOADERS = {
   css: () => import("highlight.js/lib/languages/css"),
   dart: () => import("highlight.js/lib/languages/dart"),
   diff: () => import("highlight.js/lib/languages/diff"),
-  // Recastle's own, as highlight.js has none (see dotenv.js).
-  dotenv: () => import("./dotenv.js").then((module) => ({ default: module.dotenvGrammar })),
   dockerfile: () => import("highlight.js/lib/languages/dockerfile"),
   elixir: () => import("highlight.js/lib/languages/elixir"),
   erlang: () => import("highlight.js/lib/languages/erlang"),
@@ -99,10 +98,17 @@ function splitLines(html, count) {
   return lines;
 }
 
+// .env files are read as the editor reads them (see dotenv.js), as highlight.js has no
+// language for them; the rest, by highlight.js.
+async function highlighterFor(language) {
+  if (language === "dotenv") return dotenvHtml;
+  return (await load(language)) ? (code) => hljs.highlight(code, { language, ignoreIllegals: true }).value : null;
+}
+
 self.onmessage = async ({ data: { id, language, blocks, text } }) => {
   let result = null;
-  if (await load(language)) {
-    const highlight = (code) => hljs.highlight(code, { language, ignoreIllegals: true }).value;
+  const highlight = await highlighterFor(language);
+  if (highlight) {
     result = blocks ? blocks.map((lines) => (lines.length ? splitLines(highlight(lines.join("\n")), lines.length) : [])) : highlight(text);
   }
   self.postMessage({ id, result });

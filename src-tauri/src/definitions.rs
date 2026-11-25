@@ -26,14 +26,15 @@ pub struct Match {
 /// expressions), in files whose names match any of `globs` (such as "*.js", in any
 /// folder) or are any of `files` (paths from the top, as written); in all files with
 /// neither. Untracked files too, but not binary ones or those in submodules; nor those
-/// git ignores, unless `ignored`, as for .env files, which it does ignore.
+/// git ignores, unless `include_ignored`, as for .env files, which it does ignore: only
+/// with `files` named, as otherwise every ignored folder, as node_modules, would be.
 #[tauri::command]
 pub async fn find_definitions(
     path: String,
     patterns: Vec<String>,
     globs: Vec<String>,
     files: Vec<String>,
-    ignored: Option<bool>,
+    include_ignored: Option<bool>,
 ) -> Result<Vec<Match>, String> {
     if patterns.is_empty() {
         return Ok(Vec::new());
@@ -42,7 +43,10 @@ pub async fn find_definitions(
     // Whatever the user's config says: --untracked can't search submodules, and a column
     // would come before each line's text.
     let mut args = vec!["grep", "-n", "-z", "-I", "-E", "--untracked", "--no-recurse-submodules", "--no-column", "--full-name", "--no-color"];
-    if ignored.unwrap_or(false) {
+    if include_ignored.unwrap_or(false) {
+        if files.is_empty() {
+            return Err("Ignored files are searched only by name.".into());
+        }
         args.push("--no-exclude-standard");
     }
     for pattern in &patterns {
@@ -152,12 +156,14 @@ mod tests {
         let t = TempRepo::new("definitions-ignored");
         fs::write(t.dir.join(".gitignore"), ".env\n").unwrap();
         fs::write(t.dir.join(".env"), "APP_NAME=Recastle\n").unwrap();
-        let find = |ignored| {
-            let strings = |list: &[&str]| list.iter().map(|s| s.to_string()).collect();
-            block_on(find_definitions(t.dir.to_string_lossy().into_owned(), strings(&["^APP_NAME="]), vec![], strings(&[".env"]), ignored)).unwrap()
+        let strings = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let find = |files: &[&str], include_ignored| {
+            block_on(find_definitions(t.dir.to_string_lossy().into_owned(), strings(&["^APP_NAME="]), vec![], strings(files), include_ignored))
         };
-        assert_eq!(find(None), []);
-        assert_eq!(find(Some(true)), [found(".env", 1, "APP_NAME=Recastle")]);
+        assert_eq!(find(&[".env"], None).unwrap(), []);
+        assert_eq!(find(&[".env"], Some(true)).unwrap(), [found(".env", 1, "APP_NAME=Recastle")]);
+        // Not every ignored file, as in node_modules.
+        assert!(find(&[], Some(true)).is_err());
     }
 
     #[test]

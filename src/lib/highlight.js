@@ -6,7 +6,7 @@ import { isDotenv } from "./dotenv.js";
 // ready. Very large or minified text is left plain.
 
 // Languages by file name or extension. A few names are checked in languageFor.
-const BY_NAME = { dockerfile: "dockerfile", makefile: "makefile", gemfile: "ruby", rakefile: "ruby" };
+const BY_NAME = { dockerfile: "dockerfile", makefile: "makefile", gemfile: "ruby", rakefile: "ruby", ".envrc": "bash" };
 const BY_EXTENSION = {
   js: "javascript", mjs: "javascript", cjs: "javascript", jsx: "javascript",
   ts: "typescript", mts: "typescript", cts: "typescript", tsx: "typescript",

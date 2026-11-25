@@ -745,6 +745,9 @@ export function createView(parent, state) {
   return new EditorView({ state, parent });
 }
 
+// The .env files' language, made once, when the first is opened.
+let dotenvLanguage = null;
+
 /**
  * Loads the language for `file`, if CodeMirror has one, and colors the editor with it,
  * unless `stillShown` says another file is in the editor by then. Returns its name.
@@ -752,7 +755,8 @@ export function createView(parent, state) {
 export async function loadLanguage(view, file, stillShown) {
   // .env files, which CodeMirror has no language for, have their own (see dotenv.js).
   if (isDotenv(file)) {
-    if (stillShown()) view.dispatch({ effects: language.reconfigure(StreamLanguage.define(dotenvParser)) });
+    dotenvLanguage ??= StreamLanguage.define(dotenvParser);
+    if (stillShown()) view.dispatch({ effects: language.reconfigure(dotenvLanguage) });
     return ".env";
   }
   const description = LanguageDescription.matchFilename(languages, file.split("/").pop());

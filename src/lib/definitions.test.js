@@ -93,31 +93,76 @@ describe("what's under the pointer", () => {
 });
 
 describe("an environment variable", () => {
-  test("a program reads, goes to where it's set", () => {
+  // The search's patterns as JavaScript reads them: POSIX's [[:space:]] is \s.
+  const matcher = (patterns) => {
+    const regexes = patterns.map((pattern) => new RegExp(pattern.replaceAll("[[:space:]]", "\\s")));
+    return (line) => regexes.some((regex) => regex.test(line));
+  };
+
+  // Lines that read APP_NAME, |'d where it's clicked: each found by a click there and by
+  // the search for where it's read, as both are made from one list.
+  const READS = [
+    ["config/app.php", "    'name' => env('APP_N|AME', 'Laravel'),"],
+    ["config/cache.php", 'Str::slug(env("APP_N|AME"), "_")'],
+    ["a.php", "$name = getenv('APP_|NAME');"],
+    ["a.php", "$name = \\getenv('APP_|NAME');"],
+    ["a.php", "Env::get('APP_|NAME')"],
+    ["a.php", "$_ENV['APP_|NAME']"],
+    ["a.php", "$_SERVER[ 'APP_|NAME' ]"],
+    ["a.js", "const name = process.env.APP_|NAME;"],
+    ["a.js", "process.env['APP_|NAME']"],
+    ["a.vue", "const name = import.meta.env.APP_|NAME;"],
+    ["a.py", 'name = os.getenv("APP_|NAME")'],
+    ["a.py", "name = os.environ['APP_|NAME']"],
+    ["a.py", "name = os.environ.get('APP_|NAME')"],
+    ["a.go", 'name := os.Getenv("APP_|NAME")'],
+    ["a.go", 'name, ok := os.LookupEnv("APP_|NAME")'],
+    ["a.rs", 'let name = std::env::var("APP_|NAME");'],
+    ["a.rs", 'const NAME: &str = env!("APP_|NAME");'],
+    ["a.rs", 'let name = option_env!("APP_|NAME");'],
+    ["a.rb", "name = ENV['APP_|NAME']"],
+    ["a.rb", "name = ENV.fetch('APP_|NAME')"],
+  ];
+  // Lines that don't read it, though they're close.
+  const NOT_READS = [
+    ["a.php", "if ($app->env('APP_|NAME')) {"],
+    ["a.php", "env('APP_NAME_|TOO')"],
+    ["a.js", "process.env.APP_NAME|S"],
+    ["a.js", "const APP_|NAME = 1;"],
+  ];
+
+  test("a program reads goes to where it's set, by a click and by the search alike", () => {
+    const reads = matcher(envReadSearch("APP_NAME").patterns);
+    for (const [file, line] of READS) {
+      expect(at(line, file), line).toMatchObject({ kind: "env", name: "APP_NAME", find: "set" });
+      expect(reads(line.replace("|", "")), line).toBe(true);
+    }
+    for (const [file, line] of NOT_READS) {
+      expect(at(line, file) ?? {}, line).not.toMatchObject({ kind: "env", name: "APP_NAME" });
+      expect(reads(line.replace("|", "")), line).toBe(false);
+    }
+    expect(envReadSearch("APP_NAME").globs).toEqual([]);
+  });
+
+  test("a click's on the name read, not before or after it", () => {
     expect(at("    'name' => env('APP_N|AME', 'Laravel'),", "config/app.php")).toEqual({ kind: "env", name: "APP_NAME", find: "set", from: 19, to: 27 });
     expect(at("Str::slug(env('APP_NAME', 'x')), env(\"CACHE_PRE|FIX\")", "config/cache.php")).toMatchObject({ name: "CACHE_PREFIX" });
-    expect(at("$key = getenv('AWS_|KEY');", "a.php")).toMatchObject({ name: "AWS_KEY", find: "set" });
-    expect(at("$url = $_SERVER['DB_|URL'];", "a.php")).toMatchObject({ name: "DB_URL" });
-    expect(at("const mode = process.env.NODE_|ENV;", "a.js")).toMatchObject({ name: "NODE_ENV" });
-    expect(at("const key = import.meta.env.VITE_|KEY;", "a.vue")).toMatchObject({ name: "VITE_KEY" });
-    expect(at("host = os.environ.get('DB_|HOST')", "a.py")).toMatchObject({ name: "DB_HOST" });
-    // A method of the same name isn't one.
-    expect(at("if ($app->env('loc|al')) {", "a.php")).toBeNull();
   });
 
   test("in a .env file, its name goes to where it's read, and one a value refers to, to where it's set", () => {
     expect(at("APP_N|AME=Laravel", ".env")).toEqual({ kind: "env", name: "APP_NAME", find: "read", from: 0, to: 8 });
     expect(at("export DB_|HOST=localhost", ".env.example")).toMatchObject({ name: "DB_HOST", find: "read" });
-    expect(at('MAIL_FROM_NAME="${APP_N|AME}"', ".env")).toMatchObject({ name: "APP_NAME", find: "set" });
-    expect(at("URL=$HO|ST/api", ".env")).toMatchObject({ name: "HOST", find: "set" });
-    expect(at("APP_NAME=Lara|vel", ".env")).toBeNull();
-    expect(at("# The app's na|me", ".env")).toBeNull();
+    expect(at("my.ke|y=1", ".env")).toMatchObject({ name: "my.key", find: "read" });
+    expect(at('MAIL_FROM_NAME="${APP_N|AME}"', ".env")).toEqual({ kind: "env", name: "APP_NAME", find: "set", from: 18, to: 26 });
+    expect(at("URL=$HO|ST/api", ".env")).toEqual({ kind: "env", name: "HOST", find: "set", from: 5, to: 9 });
   });
 
-  const matcher = (patterns) => {
-    const regexes = patterns.map((pattern) => new RegExp(pattern.replaceAll("[[:space:]]", "\\s")));
-    return (line) => regexes.some((regex) => regex.test(line));
-  };
+  test("in a .env file, a value, a comment or single quotes go nowhere, but a path in quotes is its file", () => {
+    expect(at("APP_NAME=Lara|vel", ".env")).toBeNull();
+    expect(at("# uses $FO|O here", ".env")).toBeNull();
+    expect(at("RAW='${HO|ST}'", ".env")).toBeNull();
+    expect(at('KEY_FILE="storage/keys/gc|p.json"', ".env").paths[0]).toBe("storage/keys/gcp.json");
+  });
 
   test("is set by its line in a .env file", () => {
     const sets = matcher(envSetSearch("APP_NAME").patterns);
@@ -125,31 +170,8 @@ describe("an environment variable", () => {
     expect(sets("export APP_NAME = x")).toBe(true);
     expect(sets("APP_NAME_TOO=x")).toBe(false);
     expect(sets("# APP_NAME=x")).toBe(false);
-  });
-
-  test("is read as any language reads one, in any file", () => {
-    const { patterns, globs } = envReadSearch("APP_NAME");
-    expect(globs).toEqual([]);
-    const reads = matcher(patterns);
-    for (const line of [
-      "'name' => env('APP_NAME', 'Laravel'),",
-      'Str::slug(env("APP_NAME"), "_")',
-      "getenv('APP_NAME')",
-      "Env::get('APP_NAME')",
-      "$_ENV['APP_NAME']",
-      "process.env.APP_NAME",
-      "process.env['APP_NAME']",
-      "import.meta.env.APP_NAME",
-      "os.environ['APP_NAME']",
-      'os.Getenv("APP_NAME")',
-      'std::env::var("APP_NAME")',
-      "ENV.fetch('APP_NAME')",
-    ]) {
-      expect(reads(line), line).toBe(true);
-    }
-    for (const line of ["env('APP_NAME_TOO')", "$app->env('APP_NAME')", "process.env.APP_NAMES", "APP_NAME=x"]) {
-      expect(reads(line), line).toBe(false);
-    }
+    // A name with a dot is the dot, not any character.
+    expect(matcher(envSetSearch("my.key").patterns)("myxkey=1")).toBe(false);
   });
 });
 
