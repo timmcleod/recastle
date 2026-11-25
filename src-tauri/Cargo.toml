@@ -1,6 +1,6 @@
 [package]
 name = "recastle"
-version = "0.49.0"
+version = "0.50.0"
 description = "Run your agent, review its work, ship it"
 authors = ["Tim McLeod"]
 license = "MIT"
