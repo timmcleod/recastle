@@ -129,7 +129,7 @@ const { press, dragging, classOf } = useTabRowDrag({
 });
 
 function onTabPointerDown(event, tab) {
-  if (event.button !== 0 || event.target.closest(".tab-close")) return;
+  if (event.button !== 0 || event.target.closest(".pane-tab-close")) return;
   press(event, tab.key);
 }
 
@@ -333,12 +333,12 @@ function startResize(event) {
 <template>
   <section class="terminal-panel" :style="{ height: `${height}px` }">
     <div class="resize-edge" @pointerdown="startResize" />
-    <header ref="tabRow" class="terminal-tabs">
-      <div ref="tabList" class="tab-list tab-row" :class="{ sorting: dragging != null }">
+    <header ref="tabRow" class="pane-tabs terminal-tabs">
+      <div ref="tabList" class="pane-tab-list tab-row" :class="{ sorting: dragging != null }">
         <div
           v-for="tab in group.tabs"
           :key="tab.key"
-          class="tab"
+          class="pane-tab"
           :class="[{ active: tab.key === group.active }, classOf(tab.key)]"
           :data-key="tab.key"
           :title="tabTitle(tab)"
@@ -352,9 +352,9 @@ function startResize(event) {
           <Plug v-else-if="tab.unreported" class="unreported" :size="15" :stroke-width="1.75" />
           <AgentIcon v-else-if="tab.kind === 'agent'" :name="tab.agent" />
           <SquareTerminal v-else :size="13" :stroke-width="1.75" />
-          <span class="tab-label">{{ label(tab) }}</span>
+          <span class="pane-tab-label">{{ label(tab) }}</span>
           <span v-if="tab.unseen" class="tab-mark" :class="tab.status?.state" />
-          <button class="tab-close" title="Close" @click.stop="closeTab(tab)"><X :size="12" /></button>
+          <button class="pane-tab-close" title="Close" @click.stop="closeTab(tab)"><X :size="12" /></button>
         </div>
       </div>
       <button class="icon-button small" :title="`New Terminal (${NEW_TERMINAL_KEYS})`" @click="newTerminal"><Plus :size="15" /></button>
@@ -402,78 +402,6 @@ function startResize(event) {
   cursor: row-resize;
 }
 
-.terminal-tabs {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 4px;
-  height: 34px;
-  padding: 0 8px 0 6px;
-  border-bottom: 1px solid var(--border);
-  background: var(--sidebar-bg);
-}
-
-/* See .tab-row in styles.css, for dragging a tab along it. */
-.tab-list {
-  --tab-gap: 2px;
-  --drop-line-inset: 3px;
-  display: flex;
-  flex: 1;
-  align-items: center;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tab {
-  position: relative;
-  display: flex;
-  flex: 0 1 auto;
-  align-items: center;
-  gap: 6px;
-  min-width: 70px;
-  max-width: 220px;
-  height: 26px;
-  padding: 0 4px 0 9px;
-  border-radius: var(--radius-md);
-  font-size: var(--font-ui);
-  color: var(--text-secondary);
-  cursor: default;
-  user-select: none;
-}
-
-.tab:hover {
-  background: var(--button-hover);
-}
-
-.tab.active {
-  /* Of a piece with the terminal below it. */
-  background: var(--sunken-bg);
-  color: var(--text-primary);
-  box-shadow: 0 0 0 1px var(--border);
-}
-
-/* Its copy following the pointer as it's dragged, picked up off the row (.tab-copy in
-   styles.css), with a deeper shadow, as the window's tabs' (TabStrip.vue). */
-.tab.following {
-  box-shadow:
-    0 0 0 1px var(--border),
-    0 12px 28px rgb(0 0 0 / 18%),
-    0 2px 6px rgb(0 0 0 / 8%);
-}
-
-.tab svg {
-  flex-shrink: 0;
-}
-
-.tab-label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 /* Claude Code whose state can't be seen (see unreported.js): a plug, not plugged in. */
 .unreported {
   color: var(--text-secondary);
@@ -490,30 +418,6 @@ function startResize(event) {
 
 .tab-mark.error {
   background: var(--danger);
-}
-
-.tab-close {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--icon);
-  opacity: 0;
-}
-
-.tab:hover .tab-close,
-.tab.active .tab-close {
-  opacity: 1;
-}
-
-.tab-close:hover {
-  background: var(--button-hover);
 }
 
 .agent-button {

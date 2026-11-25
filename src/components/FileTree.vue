@@ -23,9 +23,9 @@ const props = defineProps({
   path: { type: String, required: true },
   selected: { type: String, default: null },
   refreshKey: { type: Number, default: 0 },
-  // The changed files as the tab's last refresh read them, for their marks, or null
-  // when it didn't: then they're read here.
-  statusFiles: { type: Array, default: null },
+  // The changed files' statuses, by path, for their marks (see useFileStatuses), or
+  // null until they're known.
+  statuses: { type: Map, default: null },
 });
 // "deleted" says what was deleted, so the editor can let it go, "renamed" what was
 // renamed ({ from, to }), so it can follow, and "open-terminal" a folder to start a
@@ -39,14 +39,15 @@ watch(
 );
 const view = computed(() => remembered.get(props.path));
 defineExpose({
-  // Keyboard focus, as when the file open beside it closes and its button with it.
+  // Keyboard focus, as when the last of the files open beside it closes, and the button
+  // that closed it with it.
   focus: () => list.value?.focus(),
 });
 
 // Loaded folder listings by folder path ("" is the top).
 const listings = shallowRef(new Map());
 // path -> "modified", "added", "untracked", "renamed", "deleted" or "conflicted".
-const statuses = shallowRef(new Map());
+const statuses = computed(() => props.statuses ?? new Map());
 const error = ref("");
 let loadSeq = 0;
 
@@ -55,10 +56,7 @@ const listing = (dir) => invoke("working_entries", { path: props.path, dir });
 async function load() {
   const seq = ++loadSeq;
   const dirs = ["", ...view.value.expanded];
-  const [results, status] = await Promise.all([
-    Promise.allSettled(dirs.map(listing)),
-    props.statusFiles ? null : invoke("working_status", { path: props.path }).catch(() => []),
-  ]);
+  const results = await Promise.allSettled(dirs.map(listing));
   if (seq !== loadSeq) return;
   const loaded = new Map();
   error.value = "";
@@ -72,15 +70,7 @@ async function load() {
     if (!loaded.has(dir) && view.value.expanded.has(dir)) loaded.set(dir, entries);
   }
   listings.value = loaded;
-  if (status) statuses.value = statusesOf(status);
 }
-
-const statusesOf = (list) => new Map(list.map((f) => [f.path, f.conflicted ? "conflicted" : (f.unstaged ?? f.staged)]));
-watch(
-  () => props.statusFiles,
-  (list) => list && (statuses.value = statusesOf(list)),
-  { immediate: true },
-);
 
 watch([() => props.path, () => props.refreshKey], load, { immediate: true });
 
@@ -278,10 +268,21 @@ function listMenu(event) {
   ]);
 }
 
+// Opening a file takes a double-click, or Enter, as in a code editor's file tree: a click
+// only puts the cursor on it. A folder opens and closes with a click.
 function activate(row) {
   cursor.value = row.path;
   if (row.kind === "dir") toggle(row.path);
   else if (row.kind === "file" || row.kind === "link") emit("select", row.path);
+}
+
+function onRowClick(row) {
+  if (row.kind === "dir") activate(row);
+  else cursor.value = row.path;
+}
+
+function onRowDoubleClick(row) {
+  if (row.kind !== "dir") activate(row);
 }
 
 // --- Keys -------------------------------------------------------------------------
@@ -326,16 +327,17 @@ function onKeydown(event) {
           :class="{ selected: row.path === selected, cursor: row.path === cursor, muted: row.ignored || row.kind === 'submodule' }"
           :style="{ paddingLeft: `${8 + row.depth * 16}px` }"
           :title="row.kind === 'submodule' ? 'A separate repository' : row.path"
-          @click="activate(row)"
+          @click="onRowClick(row)"
+          @dblclick="onRowDoubleClick(row)"
           @contextmenu.prevent="rowMenu($event, row)"
         >
           <ChevronRight v-if="row.kind === 'dir'" :size="14" class="chevron" :class="{ open: view.expanded.has(row.path) }" />
           <span v-else class="chevron" />
           <FileIcon :name="row.name" :kind="row.kind" :open="view.expanded.has(row.path)" />
-          <span class="name" :class="statuses.get(row.path)">{{ row.name }}</span>
-          <span v-if="isUnsaved(path, row.path)" class="unsaved" title="Edits not saved" />
+          <span class="name status-text" :class="statuses.get(row.path)">{{ row.name }}</span>
+          <span v-if="isUnsaved(path, row.path)" class="unsaved-dot" title="Edits not saved" />
           <span v-if="row.kind === 'dir' && changedFolders.has(row.path)" class="changed-dot" title="Has changes" />
-          <span v-else-if="BADGES[statuses.get(row.path)]" class="badge" :class="statuses.get(row.path)" :title="BADGES[statuses.get(row.path)][1]">
+          <span v-else-if="BADGES[statuses.get(row.path)]" class="badge status-text" :class="statuses.get(row.path)" :title="BADGES[statuses.get(row.path)][1]">
             {{ BADGES[statuses.get(row.path)][0] }}
           </span>
         </div>
@@ -350,24 +352,6 @@ function onKeydown(event) {
   min-height: 0;
   overflow-y: auto;
   padding: 6px 0;
-}
-
-/* Changed files' names take their status's color, as in the Working Copy. */
-.name.modified,
-.badge.modified {
-  color: var(--ref-tag-text);
-}
-
-.name.added,
-.name.untracked,
-.badge.added,
-.badge.untracked {
-  color: var(--diff-added-text);
-}
-
-.name.conflicted,
-.badge.conflicted {
-  color: var(--danger);
 }
 
 .badge {
@@ -387,15 +371,6 @@ function onKeydown(event) {
   margin: 0 4px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--ref-tag) 75%, transparent);
-}
-
-/* A dot for edits not saved, as editors mark them. */
-.unsaved {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-secondary);
 }
 
 .message {

@@ -2,7 +2,7 @@
 import { computed, h, markRaw, onBeforeUnmount, onMounted, ref, render, shallowRef, watch } from "vue";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { invoke } from "@tauri-apps/api/core";
-import { CircleAlert, ExternalLink, Save, X } from "lucide-vue-next";
+import { CircleAlert, ExternalLink, Save } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   asText,
@@ -35,9 +35,9 @@ const props = defineProps({
   file: { type: String, default: null },
   refreshKey: { type: Number, default: 0 },
 });
-// "send-to-agent" with text to put in the agent's prompt; "close" to show no file. Edits
-// not saved stay with the file closed, as with one left for another (see leave).
-const emit = defineEmits(["send-to-agent", "close"]);
+// "send-to-agent" with text to put in the agent's prompt. Its file is opened and closed
+// by its tabs (see FileTabs.vue).
+const emit = defineEmits(["send-to-agent"]);
 
 // The editor module, loaded with the first file opened.
 let cm = null;
@@ -244,8 +244,16 @@ async function showState(state, focus) {
   if (!host.value) return;
   if (view) view.setState(state);
   else view = markRaw(cm.createView(host.value, state));
-  if (focus) view.focus();
+  // Asked for as it opened, or since, while it was read, as when its tab's was closed.
+  if (focus || takeFocusRequest()) view.focus();
 }
+
+defineExpose({
+  // The keys, for the file showing's text, as when its tab is clicked.
+  focus: () => {
+    if (view && isText.value && !previewing.value) view.focus();
+  },
+});
 
 watch([() => props.path, () => props.file], open, { immediate: true });
 watch(
@@ -599,7 +607,6 @@ function showPreviewTab() {
       >
         <Save :size="13" /> Save
       </button>
-      <button v-if="file" class="icon-button small" title="Close" @click="emit('close')"><X :size="14" /></button>
     </div>
 
     <div v-if="changedOnDisk" class="disk-banner">
@@ -610,7 +617,7 @@ function showPreviewTab() {
     </div>
 
     <p v-if="error" class="message"><CircleAlert :size="15" /> {{ error }}</p>
-    <div v-else-if="!file" class="empty-state"><p>Select a file to see and edit it.</p></div>
+    <div v-else-if="!file" class="empty-state"><p>Double-click a file to see and edit it.</p></div>
     <div v-else-if="contents?.kind === 'image'" class="image-view">
       <img :src="contents.image" alt="" />
     </div>

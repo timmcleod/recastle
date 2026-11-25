@@ -95,6 +95,13 @@ describe("shortcutFor", () => {
     expect(mac("Cmd+w", { inTextField: true })).toBe("closeTab");
   });
 
+  test("closes the file's tab, not the window's, with Cmd+W in the Files view's editor", () => {
+    expect(mac("Cmd+w", { inEditor: true, inTextField: true })).toBe("closeFileTab");
+    expect(linux("Ctrl+w", { inEditor: true, inTextField: true })).toBe("closeFileTab");
+    expect(mac("Cmd+w", { inEditor: true, inTextField: true, dialogOpen: true })).toBeNull();
+    expect(mac("Cmd+Shift+w", { inEditor: true, inTextField: true })).toBeNull();
+  });
+
   test("leaves everything else typed in a terminal to it", () => {
     for (const keys of ["Cmd+z", "Cmd+r", "Cmd+p", "Cmd+f", "Cmd+,", "/", "Alt+ArrowLeft"]) {
       expect(mac(keys, { inTerminal: true }), keys).toBeNull();

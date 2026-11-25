@@ -26,6 +26,7 @@ import CommitDetails from "./CommitDetails.vue";
 import CompareBar from "./CompareBar.vue";
 import ConflictView from "./ConflictView.vue";
 import FileEditor from "./FileEditor.vue";
+import FileTabs from "./FileTabs.vue";
 import FileTree from "./FileTree.vue";
 import GitHubView from "./GitHubView.vue";
 import IssueDetails from "./IssueDetails.vue";
@@ -73,7 +74,7 @@ import { cloneFolder, rememberCloneFolder } from "../lib/clone.js";
 import { forgetAvatars, loadAvatars } from "../lib/avatars.js";
 import { provideActive } from "../lib/activeWorkspace.js";
 import { dragEdge } from "../lib/resize.js";
-import { inTextField, useShortcuts } from "../lib/shortcuts.js";
+import { inFileEditor, inTextField, useShortcuts } from "../lib/shortcuts.js";
 import { useTerminalPanel } from "../lib/terminalPanel.js";
 import { useRepository } from "../lib/repository.js";
 import { useAppMenu } from "../lib/appMenu.js";
@@ -81,7 +82,9 @@ import { useGitRun } from "../lib/gitRun.js";
 import { useLostCommits } from "../lib/lostCommits.js";
 import { fileManager, isMac, shortcut } from "../lib/platform.js";
 import { githubAccount } from "../lib/github.js";
-import { focusOnOpen, forgetEdits, openFiles, renameEdits } from "../lib/editing.js";
+import { focusOnOpen, forgetEdits, renameEdits } from "../lib/editing.js";
+import { closeDeleted, closeTabs, openTab, renameInTabs, shownFile } from "../lib/fileTabs.js";
+import { useFileStatuses } from "../lib/fileStatus.js";
 import { githubRemoteOf } from "../lib/githubRemote.js";
 import { usePullTabs } from "../lib/pullTabs.js";
 import { issueError } from "../lib/issues.js";
@@ -494,8 +497,10 @@ function showMatchingCommits(query) {
 const { nav, go, describe, forget: forgetPlaces } = useNavigation({
   overview,
   view: { selected, selectedCommit, selectedStash, fileFilter, detailMode, treeFile, treeReveal, comparison },
-  fileShown: () => (isFiles.value && overview.value ? (openFiles[overview.value.path] ?? null) : null),
-  showFile: (file) => (openFiles[overview.value.path] = file),
+  fileShown: () => (isFiles.value && overview.value ? shownFile(overview.value.path) : null),
+  // A place with no file shown was before any tab opened: with tabs open, the one
+  // showing stays.
+  showFile: (file) => file && openTab(overview.value.path, file),
   active,
 });
 
@@ -525,11 +530,14 @@ useShortcuts(
   (event) => ({
     inTerminal: !!event.target.closest?.(".terminal-panel"),
     inTextField: inTextField(event.target),
-    inEditor: !!event.target.closest?.(".cm-editor"),
+    inEditor: inFileEditor(event.target),
     dialogOpen: dialogOpen(),
     repository: !!overview.value,
   }),
   {
+    closeFileTab: () => {
+      closeShownFile();
+    },
     terminal: ({ inTerminal }) => {
       if (inTerminal && terminalOpen.value) terminalOpen.value = false;
       else showTerminal();
@@ -941,6 +949,7 @@ onBeforeUnmount(() => unlistenChanges.then((unlisten) => unlisten()));
 useAppMenu({
   window: thisWindow,
   showAbout: () => showSettings(),
+  closeFile: () => closeShownFile(),
   active,
 });
 
@@ -996,29 +1005,62 @@ watch(
 
 // --- Files view --------------------------------------------------------------------
 
-// The Files view's tree, which takes keyboard focus as its file closes (see closeFile).
+// The Files view's tree, which takes keyboard focus as its last tab closes, and its
+// editor, which takes it as one of its tabs is chosen.
 const fileTree = ref(null);
+const fileEditor = ref(null);
+
+// The changed files' statuses, for the Files view's tree and tabs (see fileStatus.js).
+const fileStatuses = useFileStatuses({
+  path: () => (isFiles.value ? (overview.value?.path ?? null) : null),
+  statusFiles: () => overview.value?.files ?? null,
+  refreshKey: () => refreshKey.value,
+});
 
 // Opens a file in the Files view, to edit it, as from the Working Copy.
 function openInFiles(file) {
   focusOnOpen();
-  openFiles[overview.value.path] = file;
+  openTab(overview.value.path, file);
   selected.value = "workspace:files";
+}
+
+// Shows a file's tab, chosen from the tabs, with the keys in its text, as an editor has
+// it.
+function showFileTab(file) {
+  const path = overview.value.path;
+  if (file === shownFile(path)) fileEditor.value?.focus();
+  else {
+    focusOnOpen();
+    openTab(path, file);
+  }
+}
+
+// Closes files' tabs, from the tabs or with ⌘W in the editor. The keys go to the file
+// showing after, as the button or editor they were on may have gone, or with none, to
+// the tree.
+async function closeFileTabs(files) {
+  const path = overview.value?.path;
+  if (!path) return;
+  const before = shownFile(path);
+  if (!(await closeTabs(path, files))) return;
+  const after = shownFile(path);
+  if (!after) fileTree.value?.focus();
+  else if (after === before) fileEditor.value?.focus();
+  // Being read: it takes them once it's shown.
+  else focusOnOpen();
+}
+
+// Closes the file showing, as with ⌘W in the editor.
+function closeShownFile() {
+  const file = overview.value && shownFile(overview.value.path);
+  if (file) closeFileTabs([file]);
 }
 
 // A file deleted in the Files view, or a folder, closes if it's open, once the editor
 // has let it go, and takes its edits not saved with it.
-// The Files view's file closed from its header: keyboard focus goes to the tree, as the
-// button it was on goes with the file.
-function closeFile() {
-  openFiles[overview.value.path] = null;
-  fileTree.value?.focus();
-}
-
 async function onFileDeleted(file) {
   const path = overview.value.path;
-  const open = openFiles[path];
-  if (open === file || open?.startsWith(`${file}/`)) openFiles[path] = null;
+  closeDeleted(path, file);
   await nextTick();
   forgetEdits(path, file);
 }
@@ -1028,9 +1070,7 @@ async function onFileDeleted(file) {
 // name, and before it opens the new one.
 async function onFileRenamed({ from, to }) {
   const path = overview.value.path;
-  const open = openFiles[path];
-  if (open === from) openFiles[path] = to;
-  else if (open?.startsWith(`${from}/`)) openFiles[path] = to + open.slice(from.length);
+  renameInTabs(path, from, to);
   await nextTick();
   renameEdits(path, from, to);
 }
@@ -1577,10 +1617,10 @@ const breadcrumb = computed(() => {
         v-else-if="isFiles"
         ref="fileTree"
         :path="overview.path"
-        :selected="openFiles[overview.path] ?? null"
+        :selected="shownFile(overview.path)"
         :refresh-key="refreshKey"
-        :status-files="overview.files ?? null"
-        @select="openFiles[overview.path] = $event"
+        :statuses="fileStatuses"
+        @select="openTab(overview.path, $event)"
         @deleted="onFileDeleted"
         @renamed="onFileRenamed"
         @open-terminal="(folder) => showTerminal({ newTab: true, folder })"
@@ -1764,7 +1804,7 @@ const breadcrumb = computed(() => {
           :rev="searchRev"
           :refresh-key="refreshKey"
           :untracked="isFiles"
-          @pick="(file) => (isFiles ? (focusOnOpen(), (openFiles[overview.path] = file)) : showFileHistory(file))"
+          @pick="(file) => (isFiles ? (focusOnOpen(), openTab(overview.path, file)) : showFileHistory(file))"
           @pick-commit="showFoundCommit"
           @filter-commits="showMatchingCommits"
         />
@@ -1789,14 +1829,16 @@ const breadcrumb = computed(() => {
         </div>
       </template>
 
-      <FileEditor
-        v-else-if="isFiles"
-        :path="overview.path"
-        :file="openFiles[overview.path] ?? null"
-        :refresh-key="refreshKey"
-        @send-to-agent="pasteToAgent"
-        @close="closeFile"
-      />
+      <template v-else-if="isFiles">
+        <FileTabs :path="overview.path" :statuses="fileStatuses" @show="showFileTab" @close="closeFileTabs" />
+        <FileEditor
+          ref="fileEditor"
+          :path="overview.path"
+          :file="shownFile(overview.path)"
+          :refresh-key="refreshKey"
+          @send-to-agent="pasteToAgent"
+        />
+      </template>
 
       <template v-else-if="isIssues">
         <div class="subheader">

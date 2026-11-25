@@ -34,7 +34,8 @@ import {
   tell,
 } from "./lib/overlays.js";
 import { isMac } from "./lib/platform.js";
-import { inTextField, useShortcuts } from "./lib/shortcuts.js";
+import { inFileEditor, inTextField, useShortcuts } from "./lib/shortcuts.js";
+import { closesFileTab } from "./lib/appMenu.js";
 import { moveTab, showNext, showNumber } from "./lib/tabs.js";
 import { useTabs } from "./lib/windowTabs.js";
 import { settings } from "./lib/settings.js";
@@ -103,7 +104,8 @@ const unlistenMenu = thisWindow.listen("menu", ({ payload }) => {
   if (dialogOpen()) return;
   if (payload === "new-window") newWindow();
   if (payload === "new-tab" && started.value) newTab();
-  if (payload === "close-tab") started.value ? askToClose(tabs.active) : thisWindow.close();
+  // From the Files view's editor, it's the file's tab that closes (see appMenu.js).
+  if (payload === "close-tab" && !closesFileTab()) started.value ? askToClose(tabs.active) : thisWindow.close();
 });
 onBeforeUnmount(() => unlistenMenu.then((stop) => stop()));
 
@@ -113,7 +115,7 @@ useShortcuts(
   (event) => ({
     inTerminal: !!event.target.closest?.(".terminal-panel"),
     inTextField: inTextField(event.target),
-    inEditor: false,
+    inEditor: inFileEditor(event.target),
     dialogOpen: dialogOpen(),
     repository: false,
   }),

@@ -49,10 +49,12 @@ export function dropPlace(keys, key, at) {
  *   keys()     their keys, in order
  *   move(key, to)  put the tab `key` at `to` among them, as dropped there
  *   image(element) what follows the pointer; a copy of the tab, by default
+ *   among(key)     the keys the tab `key` can land among, where a row keeps some apart,
+ *                  as the Files view's pinned tabs are; all of them, by default
  * Returns press(event, key), for a tab's pointerdown; the key being dragged; and
  * classOf(key), a tab's class while dragging: "dragging", or where it would land.
  */
-export function useTabRowDrag({ row, list, keys, move, image = dragCopy }) {
+export function useTabRowDrag({ row, list, keys, move, image = dragCopy, among = keys }) {
   const dragging = ref(null);
   // Where it would land: { key, after }, as landingAt has it, or null for nowhere.
   const dropAt = ref(null);
@@ -91,10 +93,15 @@ export function useTabRowDrag({ row, list, keys, move, image = dragCopy }) {
     hold: ({ element, x, y }) => grabPoint(element, x, y),
     start({ data: key }) {
       dragging.value = key;
-      spans = tabElements().map((element) => {
-        const { left, right } = element.getBoundingClientRect();
-        return { key: element.dataset.key, left: alongRow(left), right: alongRow(right) };
-      });
+      // Only places beside those it can land among are offered, so the line shows
+      // where it goes.
+      const amongThese = new Set(among(key).map(String));
+      spans = tabElements()
+        .filter((element) => amongThese.has(element.dataset.key))
+        .map((element) => {
+          const { left, right } = element.getBoundingClientRect();
+          return { key: element.dataset.key, left: alongRow(left), right: alongRow(right) };
+        });
     },
     move(event) {
       pointer = { x: event.clientX, y: event.clientY };

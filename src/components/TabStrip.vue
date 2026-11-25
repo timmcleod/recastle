@@ -1,9 +1,10 @@
 <script setup>
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { Check, GitBranch, Plus, X } from "lucide-vue-next";
 import Spinner from "./Spinner.vue";
 import { shortcut } from "../lib/platform.js";
 import { useTabRowDrag } from "../lib/tabRowDrag.js";
+import { useTabRowScroll } from "../lib/tabRowScroll.js";
 import { isWorktree, tabColor, tabDetails, tabInitial, tabNames } from "../lib/tabs.js";
 
 // The window's tabs, across its top (see tabs.js): each a card naming its repository,
@@ -56,25 +57,9 @@ function onPointerDown(event, tab) {
   press(event, tab.id);
 }
 
-// --- The row scrolling -----------------------------------------------------------------
-// With more tabs than fit, the row scrolls sideways, its scrollbar hidden.
-
-// The tab that comes to show is scrolled into the row, however it was chosen, as by
-// Cmd+9, or opened at the end.
-watch(
-  () => props.active,
-  async () => {
-    await nextTick();
-    list.value?.querySelector(".tab.active")?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-  },
-);
-
-// A mouse's wheel scrolls it too, as one without a trackpad has no other way.
-function onWheel(event) {
-  if (!event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-  event.preventDefault();
-  list.value.scrollLeft += event.deltaY;
-}
+// With more tabs than fit, the row scrolls sideways (see tabRowScroll.js), as by Cmd+9,
+// or opened at the end.
+const onWheel = useTabRowScroll(list, () => props.active);
 
 </script>
 

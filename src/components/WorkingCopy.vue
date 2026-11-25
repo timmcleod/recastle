@@ -13,6 +13,7 @@ import FilePath from "./FilePath.vue";
 import { useWindowed } from "../lib/windowed.js";
 import { useOverflows } from "../lib/overflows.js";
 import { onSavedElsewhere, writeJson } from "../lib/storage.js";
+import { statusOf } from "../lib/fileStatus.js";
 import { TREE_KEY, listsAsTree } from "../lib/workingOrder.js";
 
 // The list of changed files with staging checkboxes, and the commit form below it.
@@ -590,9 +591,6 @@ const STATUS_LETTER = {
   typechange: "T",
   conflicted: "!",
 };
-
-// What the badge shows: a conflict first, then the unstaged change, then the staged one.
-const statusOf = (file) => (file.conflicted ? "conflicted" : (file.unstaged ?? file.staged));
 
 const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
 const changedCount = computed(() => plural(files.value?.length ?? 0, "changed file"));

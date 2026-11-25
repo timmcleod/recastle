@@ -2,12 +2,9 @@ import { reactive } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { folderName } from "./format.js";
 
-// What the Files view is editing: the file open in each repository, and edits that
-// aren't saved yet, kept while moving between files, views and repositories, the way
-// commit message drafts are. Quitting with any asks first (see quit.rs).
-
-// The file open in each repository's Files view: path -> file.
-export const openFiles = reactive({});
+// What the Files view is editing: edits that aren't saved yet, kept while moving
+// between files, views and repositories, the way commit message drafts are. Quitting
+// with any asks first (see quit.rs). The files open in it are its tabs' (fileTabs.js).
 
 // Whether the next file opened takes the keys. Asked for by what opens a file to write
 // in, such as New File or the search; opened from the tree, the keys stay in the tree.

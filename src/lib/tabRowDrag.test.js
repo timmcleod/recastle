@@ -42,7 +42,7 @@ const pointer = (type, x, y = 20) => new PointerEvent(type, { button: 0, clientX
 
 // A row of tabs 100 wide, keyed as a terminal panel's are, which records where a tab's
 // put and puts it there, and the drag along it.
-function render(keys) {
+function render(keys, among) {
   const tabs = ref(keys);
   const move = vi.fn((key, to) => {
     const list = tabs.value.filter((other) => other !== key);
@@ -56,7 +56,7 @@ function render(keys) {
     setup() {
       const row = ref(null);
       const list = ref(null);
-      drag = useTabRowDrag({ row, list, keys: () => tabs.value, move });
+      drag = useTabRowDrag({ row, list, keys: () => tabs.value, move, ...(among && { among }) });
       return () =>
         h("div", { ref: row, class: "row" }, [
           h(
@@ -90,6 +90,19 @@ test("dragged along the row, the tab's faded, the gap's where it'd land, and dro
   expect(move).toHaveBeenCalledWith("k1", 1);
   expect(tabs.value).toEqual(["k2", "k1", "k3"]);
   expect(root.querySelector(".dragging, .drop-before, .drop-after")).toBeNull();
+});
+
+test("a tab kept apart from some lands only among those it can, the line showing where", async () => {
+  // k1 is set apart, as a pinned tab is: the others land after it.
+  const { root, move } = render(["k1", "k2", "k3"], (key) => (key === "k1" ? ["k1"] : ["k2", "k3"]));
+  const tab = (key) => root.querySelector(`[data-key="${key}"]`);
+  tab("k3").dispatchEvent(pointer("pointerdown", 250));
+  window.dispatchEvent(pointer("pointermove", 10));
+  await nextTick();
+  expect(tab("k1").classList.contains("drop-before")).toBe(false);
+  expect(tab("k2").classList.contains("drop-before")).toBe(true);
+  window.dispatchEvent(pointer("pointerup", 10));
+  expect(move).toHaveBeenCalledWith("k3", 1);
 });
 
 test("what follows the pointer is marked as a tab's copy, to be drawn picked up", async () => {

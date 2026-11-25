@@ -1,6 +1,9 @@
 import { onBeforeUnmount } from "vue";
 import { isMac } from "./platform.js";
 
+/** Whether a key pressed at `target`, or the menu chosen with the keys there, is in the Files view's editor. */
+export const inFileEditor = (target) => !!target?.closest?.(".cm-editor");
+
 /**
  * Which of Recastle's window-wide shortcuts a key press is, if any, by name, or null.
  * `where` says where it was pressed and what's showing: { inTerminal, inTextField,
@@ -8,6 +11,9 @@ import { isMac } from "./platform.js";
  * they're Cmd; elsewhere Ctrl.
  *
  * In the order they're tried:
+ *   closeFileTab      Cmd+W in the Files view's editor closes the file's tab, rather than
+ *                     the window's, as in an editor. On a Mac, the menu's Close Tab does
+ *                     the same there (see appMenu.js).
  *   newTab            Cmd+T opens a tab, and newWindow, Cmd+N, a window, as in a browser;
  *                     closeTab, Cmd+W, closes the tab showing; showTab, Cmd+1 to Cmd+9,
  *                     shows that tab, Cmd+9 the last. On a Mac from a terminal too, where
@@ -46,6 +52,7 @@ export function shortcutFor(event, where, mac = isMac) {
   const recastles = (mac || !inTerminal) && !dialogOpen;
   // By the letter, as N and W are, and undo's Z and Y: by where T is on a US keyboard,
   // Ctrl+Y on Dvorak, which is redo, would open a tab.
+  if (alone && key === "w" && inEditor && !dialogOpen) return "closeFileTab";
   if (alone && key === "t" && recastles) return "newTab";
   if (alone && key === "n" && recastles) return "newWindow";
   if (alone && key === "w" && recastles && (mac || !inTextField)) return "closeTab";

@@ -753,3 +753,136 @@ test("switching repository in a tab takes away the card of what was done in the 
   await settle();
   expect(shown("Fetch failed")).toBe(false);
 });
+
+// Shows the Files view, with two files, each opening as `read`, and none open yet, as the
+// tabs another test left are kept.
+async function showFiles(read) {
+  const { closeTabs, fileTabs: tabsOf } = await import("./lib/fileTabs.js");
+  await closeTabs(RECASTLE, [...tabsOf(RECASTLE).files]);
+  answers.working_entries = [
+    { name: "README.md", path: "README.md", kind: "file" },
+    { name: "notes.bin", path: "notes.bin", kind: "file" },
+  ];
+  answers.read_working_file = read;
+  answers.committed_text = null;
+  [...showing().querySelectorAll(".sidebar *")].find((el) => el.textContent.trim() === "Files" && el.closest("[role], button, li, .row")).click();
+  await until(() => !!showing().querySelector('.tree-row[data-path="README.md"]'));
+}
+const row = (file) => showing().querySelector(`.tree-row[data-path="${file}"]`);
+const openFile = (file) => row(file).dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+const fileTabs = () => [...showing().querySelectorAll(".file-tabs .pane-tab")].map((tab) => tab.textContent.trim());
+
+test("the Files view opens a file in a tab of its own on a double-click, and closing it shows the one before", async () => {
+  await start();
+  // Not text, so each opens without the editor's code.
+  await showFiles({ kind: "binary", size: 10 });
+
+  // A click only picks it out.
+  row("README.md").click();
+  await settle();
+  expect(fileTabs()).toEqual([]);
+
+  openFile("README.md");
+  openFile("notes.bin");
+  await until(() => fileTabs().length === 2);
+  expect(fileTabs()).toEqual(["README.md", "notes.bin"]);
+  expect(calls("read_working_file").at(-1)).toMatchObject({ path: RECASTLE, file: "notes.bin" });
+
+  showing().querySelector(".file-tabs .pane-tab.active .pane-tab-close").click();
+  await until(() => fileTabs().length === 1);
+  expect(showing().querySelector(".file-tabs .pane-tab.active").textContent.trim()).toBe("README.md");
+  expect(errors).toEqual([]);
+});
+
+test("Cmd+W in the Files view's editor closes the file's tab, not the window's, as the menu's Close Tab does there", async () => {
+  await start();
+  await showFiles({ kind: "text", text: "Hello", size: 5, version: "1", crlf: false, bom: false });
+  openFile("README.md");
+  openFile("notes.bin");
+  await until(() => !!showing().querySelector(".cm-content"));
+  const content = showing().querySelector(".cm-content");
+  content.focus();
+  content.dispatchEvent(new KeyboardEvent("keydown", { key: "w", code: "KeyW", metaKey: isMac, ctrlKey: !isMac, bubbles: true }));
+  await until(() => fileTabs().length === 1);
+  expect(fileTabs()).toEqual(["README.md"]);
+
+  // The menu's, as on a Mac, where it takes the key before the page.
+  await until(() => !!showing().querySelector(".cm-content"));
+  showing().querySelector(".cm-content").focus();
+  send("menu", "close-tab");
+  await until(() => fileTabs().length === 0);
+  expect(window.close).not.toHaveBeenCalled();
+  expect(errors).toEqual([]);
+});
+
+// The Files view's editor showing, and what's in it.
+const editorView = async () => {
+  const { EditorView } = await import("@codemirror/view");
+  await until(() => !!showing().querySelector(".cm-editor"));
+  return EditorView.findFromDOM(showing().querySelector(".cm-editor"));
+};
+const TEXT_FILE = { kind: "text", text: "Hello", size: 5, version: "1", crlf: false, bom: false };
+
+test("a file's tab closed with edits not saved asks, and closing loses them, saving nothing", async () => {
+  const { settings } = await import("./lib/settings.js");
+  settings.autoSave = false;
+  try {
+    await start();
+    await showFiles(TEXT_FILE);
+    openFile("README.md");
+    const view = await editorView();
+    view.dispatch({ changes: { from: 5, insert: ", world" } });
+    await settle();
+    showing().querySelector(".file-tabs .pane-tab.active .pane-tab-close").click();
+    await until(() => shown("Edits to “README.md” aren't saved. Closing loses them."));
+    button("Close").click();
+    await until(() => fileTabs().length === 0);
+    await settle();
+    const { unsavedFiles } = await import("./lib/editing.js");
+    expect(unsavedFiles()).toEqual([]);
+    expect(calls("save_working_file")).toEqual([]);
+
+    // Opened again, it's as it is on disk.
+    openFile("README.md");
+    await until(() => !!showing().querySelector(".cm-content")?.textContent.includes("Hello"));
+    expect((await editorView()).state.doc.toString()).toBe("Hello");
+  } finally {
+    settings.autoSave = true;
+  }
+});
+
+test("a file's tab closed, saving automatically, saves its edits first, without asking", async () => {
+  await start();
+  await showFiles(TEXT_FILE);
+  answers.save_working_file = "2";
+  openFile("README.md");
+  const view = await editorView();
+  view.dispatch({ changes: { from: 5, insert: "!" } });
+  showing().querySelector(".file-tabs .pane-tab.active .pane-tab-close").click();
+  await until(() => fileTabs().length === 0);
+  expect(calls("save_working_file")).toEqual([expect.objectContaining({ path: RECASTLE, file: "README.md", text: "Hello!" })]);
+  expect(document.querySelector("[role=alertdialog]")).toBeNull();
+});
+
+test("a file's tab closed with its ×, the keys go to the file showing next, for ⌘W to close its tab too", async () => {
+  await start();
+  await showFiles(TEXT_FILE);
+  openFile("README.md");
+  openFile("notes.bin");
+  await until(() => !!showing().querySelector(".cm-content"));
+  showing().querySelector(".file-tabs .pane-tab.active .pane-tab-close").click();
+  await until(() => fileTabs().length === 1 && !!document.activeElement?.closest(".cm-editor"));
+  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "w", code: "KeyW", metaKey: isMac, ctrlKey: !isMac, bubbles: true }));
+  await until(() => fileTabs().length === 0);
+  expect(window.close).not.toHaveBeenCalled();
+});
+
+test("coming to the Files view from one that doesn't list the changed files, their colors are read for it", async () => {
+  // The overview has the changed files only when a view showing lists them.
+  answers.repo_overview = ({ path, files }) => ({ ...structuredClone(repositories[path]), files: files ? structuredClone(repositories[path].files) : null });
+  await start();
+  await showFiles({ kind: "binary", size: 10 });
+  openFile("README.md");
+  await until(() => !!showing().querySelector(".file-tabs .pane-tab-label.modified"));
+  expect(row("README.md").querySelector(".name").classList).toContain("modified");
+});

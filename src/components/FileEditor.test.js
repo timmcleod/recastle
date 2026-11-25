@@ -20,22 +20,27 @@ async function mount(file) {
   vi.mocked(invoke).mockResolvedValue({ kind: "binary", size: 2048 });
   const root = document.createElement("div");
   document.body.append(root);
-  const closed = [];
-  app = createApp({ render: () => h(FileEditor, { path: "/repo", file, onClose: () => closed.push(file) }) });
+  app = createApp({ render: () => h(FileEditor, { path: "/repo", file }) });
   app.mount(root);
-  for (let i = 0; i < 4; i++) await nextTick();
-  return closed;
 }
 
-const closeButton = () => document.querySelector('.editor-header button[title="Close"]');
+// Waits for `text` to show, a turn at a time: opening loads the editor's code first.
+async function until(text) {
+  const giveUpAt = performance.now() + 2000;
+  while (!document.body.textContent.includes(text) && performance.now() < giveUpAt) {
+    await new Promise((resolve) => setTimeout(resolve));
+    await nextTick();
+  }
+  expect(document.body.textContent).toContain(text);
+}
 
-test("closes the open file from its header", async () => {
-  const closed = await mount("assets/logo.bin");
-  closeButton().click();
-  expect(closed).toEqual(["assets/logo.bin"]);
+test("a file that isn't text says so, with its size", async () => {
+  await mount("assets/logo.bin");
+  await until("This file isn't text Recastle can edit.");
+  expect(document.body.textContent).toContain("2.0 KB");
 });
 
-test("has nothing to close with no file open", async () => {
+test("with no file open, says how to open one", async () => {
   await mount(null);
-  expect(closeButton()).toBeNull();
+  await until("Double-click a file to see and edit it.");
 });
