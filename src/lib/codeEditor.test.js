@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "vitest";
-import { createState, createView, linkUnder } from "./codeEditor.js";
+import { syntaxTree } from "@codemirror/language";
+import { createState, createView, linkUnder, loadLanguage } from "./codeEditor.js";
 
 let view;
 afterEach(() => view?.destroy());
@@ -26,4 +27,10 @@ test("what goes somewhere is under the pointer only on it, not on the space besi
   // posAtCoords takes the line's end as nearest, past it.
   expect(linkUnder(view, 160, 10)).toBeNull();
   expect(linkUnder(view, 50, 40)).toBeNull();
+});
+
+test("a .env file is read as one, named so for the status bar", async () => {
+  view = createView(document.createElement("div"), createState("APP_NAME=Laravel", ".env.example", { tabSize: 2, highlight: true, wrap: false }));
+  expect(await loadLanguage(view, ".env.example", () => true)).toBe(".env");
+  expect(syntaxTree(view.state).length).toBeGreaterThan(0);
 });

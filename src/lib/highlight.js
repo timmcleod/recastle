@@ -1,3 +1,5 @@
+import { isDotenv } from "./dotenv.js";
+
 // Syntax highlighting for diffs and file contents, with highlight.js. It runs in a
 // worker (highlightWorker.js), which loads each language the first time a file needs
 // it, so the page stays responsive and shows the plain text until the colors are
@@ -12,7 +14,7 @@ const BY_EXTENSION = {
   php: "php", phtml: "php-template",
   css: "css", scss: "scss", less: "less",
   json: "json", jsonc: "json",
-  yml: "yaml", yaml: "yaml", toml: "ini", ini: "ini", cfg: "ini", conf: "ini", env: "bash",
+  yml: "yaml", yaml: "yaml", toml: "ini", ini: "ini", cfg: "ini", conf: "ini",
   md: "markdown", markdown: "markdown",
   sh: "bash", bash: "bash", zsh: "bash",
   py: "python", rb: "ruby", rs: "rust", go: "go", java: "java", kt: "kotlin", kts: "kotlin",
@@ -30,7 +32,7 @@ export function languageFor(file) {
   const name = file.split("/").pop().toLowerCase();
   if (BY_NAME[name]) return BY_NAME[name];
   if (name.endsWith(".blade.php")) return "xml";
-  if (name.startsWith(".env")) return "bash";
+  if (isDotenv(name)) return "dotenv";
   if (name === "package-lock.json" || name === "composer.lock") return "json";
   const extension = name.includes(".") ? name.split(".").pop() : "";
   return BY_EXTENSION[extension] ?? null;

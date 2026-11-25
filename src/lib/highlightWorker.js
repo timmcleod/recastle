@@ -16,6 +16,8 @@ const LOADERS = {
   css: () => import("highlight.js/lib/languages/css"),
   dart: () => import("highlight.js/lib/languages/dart"),
   diff: () => import("highlight.js/lib/languages/diff"),
+  // Recastle's own, as highlight.js has none (see dotenv.js).
+  dotenv: () => import("./dotenv.js").then((module) => ({ default: module.dotenvGrammar })),
   dockerfile: () => import("highlight.js/lib/languages/dockerfile"),
   elixir: () => import("highlight.js/lib/languages/elixir"),
   erlang: () => import("highlight.js/lib/languages/erlang"),

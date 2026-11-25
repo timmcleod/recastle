@@ -28,11 +28,13 @@ import {
   indentOnInput,
   indentUnit,
   LanguageDescription,
+  StreamLanguage,
   syntaxHighlighting,
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { tags as t } from "@lezer/highlight";
 import { isMac } from "./platform.js";
+import { dotenvParser, isDotenv } from "./dotenv.js";
 
 // The Files view's editor: CodeMirror, in Recastle's colors and fonts, loaded the first
 // time a file is opened there. Each file's editor state is made here; FileEditor.vue
@@ -748,6 +750,11 @@ export function createView(parent, state) {
  * unless `stillShown` says another file is in the editor by then. Returns its name.
  */
 export async function loadLanguage(view, file, stillShown) {
+  // .env files, which CodeMirror has no language for, have their own (see dotenv.js).
+  if (isDotenv(file)) {
+    if (stillShown()) view.dispatch({ effects: language.reconfigure(StreamLanguage.define(dotenvParser)) });
+    return ".env";
+  }
   const description = LanguageDescription.matchFilename(languages, file.split("/").pop());
   if (!description) return;
   const support = await description.load().catch(() => null);
