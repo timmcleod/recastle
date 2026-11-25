@@ -25,10 +25,16 @@ pub struct Match {
 /// The lines in the working copy matching any of `patterns` (POSIX extended regular
 /// expressions), in files whose names match any of `globs` (such as "*.js", in any
 /// folder) or are any of `files` (paths from the top, as written); in all files with
-/// neither. Untracked files too, but not those git ignores, binary ones or those in
-/// submodules.
+/// neither. Untracked files too, but not binary ones or those in submodules; nor those
+/// git ignores, unless `ignored`, as for .env files, which it does ignore.
 #[tauri::command]
-pub async fn find_definitions(path: String, patterns: Vec<String>, globs: Vec<String>, files: Vec<String>) -> Result<Vec<Match>, String> {
+pub async fn find_definitions(
+    path: String,
+    patterns: Vec<String>,
+    globs: Vec<String>,
+    files: Vec<String>,
+    ignored: Option<bool>,
+) -> Result<Vec<Match>, String> {
     if patterns.is_empty() {
         return Ok(Vec::new());
     }
@@ -36,6 +42,9 @@ pub async fn find_definitions(path: String, patterns: Vec<String>, globs: Vec<St
     // Whatever the user's config says: --untracked can't search submodules, and a column
     // would come before each line's text.
     let mut args = vec!["grep", "-n", "-z", "-I", "-E", "--untracked", "--no-recurse-submodules", "--no-column", "--full-name", "--no-color"];
+    if ignored.unwrap_or(false) {
+        args.push("--no-exclude-standard");
+    }
     for pattern in &patterns {
         args.extend(["-e", pattern]);
     }
@@ -86,7 +95,7 @@ mod tests {
 
     fn find_in(t: &TempRepo, patterns: &[&str], globs: &[&str], files: &[&str]) -> Result<Vec<Match>, String> {
         let strings = |list: &[&str]| list.iter().map(|s| s.to_string()).collect();
-        block_on(find_definitions(t.dir.to_string_lossy().into_owned(), strings(patterns), strings(globs), strings(files)))
+        block_on(find_definitions(t.dir.to_string_lossy().into_owned(), strings(patterns), strings(globs), strings(files), None))
     }
 
     fn found(file: &str, line: u32, text: &str) -> Match {
@@ -136,6 +145,19 @@ mod tests {
         config.set_bool("grep.column", true).unwrap();
         fs::write(t.dir.join("a.js"), "  function go() {}\n").unwrap();
         assert_eq!(find(&t, &["function go"], &["*.js"]).unwrap(), [found("a.js", 1, "function go() {}")]);
+    }
+
+    #[test]
+    fn ignored_files_are_searched_when_asked_as_env_files_are() {
+        let t = TempRepo::new("definitions-ignored");
+        fs::write(t.dir.join(".gitignore"), ".env\n").unwrap();
+        fs::write(t.dir.join(".env"), "APP_NAME=Recastle\n").unwrap();
+        let find = |ignored| {
+            let strings = |list: &[&str]| list.iter().map(|s| s.to_string()).collect();
+            block_on(find_definitions(t.dir.to_string_lossy().into_owned(), strings(&["^APP_NAME="]), vec![], strings(&[".env"]), ignored)).unwrap()
+        };
+        assert_eq!(find(None), []);
+        assert_eq!(find(Some(true)), [found(".env", 1, "APP_NAME=Recastle")]);
     }
 
     #[test]

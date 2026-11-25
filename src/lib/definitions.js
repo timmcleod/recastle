@@ -1,5 +1,8 @@
+import { isDotenv } from "./dotenv.js";
+
 // Going to a definition, with Ctrl+click (⌘-click) in the Files view's editor: what's
-// under the pointer, a file's path or a name, and where that could be. Read from the
+// under the pointer, a file's path, a name or an environment variable, and where that
+// could be. Read from the
 // text, not understood as code, so a name is looked for by the lines that would define
 // it in the file's language (see definitions.rs, which searches for them): a good guess,
 // in any repository, though one that can't tell two things of the same name apart.
@@ -18,15 +21,91 @@ const isMarkdown = (file) => ["md", "markdown", "mdown", "mkd", "mkdn"].includes
 
 /**
  * What going to a definition from `column` (from 0) in `text`, a line of `file`, would
- * go to: { kind: "path", paths, from, to }, a file, the first of `paths` there is; or
+ * go to: { kind: "path", paths, from, to }, a file, the first of `paths` there is;
  * { kind: "name", name, owner, from, to }, `owner` the name before it and ::, as the
- * class in PHP's TicketStatus::cases(), or null; or null. `from` and `to` are where it
- * is in the line.
+ * class in PHP's TicketStatus::cases(), or null; { kind: "env", name, find, from, to },
+ * an environment variable, to `find` where it's "set", in .env files, or where it's
+ * "read", by the app; or null. `from` and `to` are where it is in the line.
  */
 export function targetAt(text, column, file) {
-  const target = rustModule(text, column, file) ?? markdownLink(text, column, file) ?? quoted(text, column, file) ?? nameAt(text, column, file);
+  if (isDotenv(file)) return inDotenv(text, column);
+  const target =
+    rustModule(text, column, file) ??
+    envRead(text, column) ??
+    markdownLink(text, column, file) ??
+    quoted(text, column, file) ??
+    nameAt(text, column, file);
   // Text in quotes, or a link, that isn't a file: nothing to go to, though it has names.
   return target?.kind === "text" ? null : target;
+}
+
+// --- Environment variables ---------------------------------------------------------------
+// In a .env file, a variable's name goes to where the app reads it, as Laravel's
+// config/*.php do with env('NAME'); and the app's reading it, to where it's set.
+
+const ENV_NAME = "[A-Za-z_][A-Za-z0-9_]*";
+
+// Where a program reads a variable, by its name: in PHP, env(), getenv(), Env::get(),
+// $_ENV and $_SERVER; in JavaScript, process.env and import.meta.env; and Python's,
+// Go's, Rust's and Ruby's. Each ends with the name, or its closing quote.
+const ENV_READS = [
+  // Not a method of the same name, as $app->env('local'), which isn't one.
+  new RegExp(`(?:(?<![\\w$>.])(?:env|getenv)|Env::get|os\\.Getenv|env::var(?:_os)?|ENV\\.fetch|os\\.environ\\.get)\\(\\s*(['"])(${ENV_NAME})\\1`, "g"),
+  new RegExp(`(?:\\$_(?:ENV|SERVER)|process\\.env|os\\.environ|\\bENV)\\[\\s*(['"])(${ENV_NAME})\\1`, "g"),
+  new RegExp(`(?:process|import\\.meta)\\.env\\.()(${ENV_NAME})`, "g"),
+];
+
+// The variable a program reads at the column, to go to where it's set.
+function envRead(text, column) {
+  for (const pattern of ENV_READS) {
+    for (const match of text.matchAll(pattern)) {
+      const name = match[2];
+      const to = match.index + match[0].length - match[1].length;
+      const from = to - name.length;
+      if (column >= from && column <= to) return { kind: "env", name, find: "set", from, to };
+    }
+  }
+  return null;
+}
+
+// In a .env file: a variable's name, at the line's start, goes to where it's read; one
+// a value refers to, as ${NAME}, to where it's set.
+function inDotenv(text, column) {
+  const set = new RegExp(`^(\\s*(?:export\\s+)?)(${ENV_NAME})\\s*=`).exec(text);
+  if (set) {
+    const from = set[1].length;
+    const to = from + set[2].length;
+    if (column >= from && column <= to) return { kind: "env", name: set[2], find: "read", from, to };
+  }
+  for (const match of text.matchAll(new RegExp(`\\$\\{?(${ENV_NAME})`, "g"))) {
+    const from = match.index + match[0].length - match[1].length;
+    const to = from + match[1].length;
+    if (column >= from && column <= to) return { kind: "env", name: match[1], find: "set", from, to };
+  }
+  return null;
+}
+
+/**
+ * What to search for, to find where the environment variable `name` is set, in .env
+ * files, as find_definitions takes them: { patterns }.
+ */
+export const envSetSearch = (name) => ({ patterns: [`^[[:space:]]*(export[[:space:]]+)?${name}[[:space:]]*=`] });
+
+/**
+ * What to search for, to find where a program reads the environment variable `name`,
+ * as ENV_READS has it, in any file: { patterns, globs }.
+ */
+export function envReadSearch(name) {
+  const quoted = `[[:space:]]*['"]${name}['"]`;
+  return {
+    patterns: [
+      `(^|[^A-Za-z0-9_$>.])(env|getenv)\\(${quoted}`,
+      `(Env::get|os\\.Getenv|env::var(_os)?|ENV\\.fetch|os\\.environ\\.get)\\(${quoted}`,
+      `(\\$_(ENV|SERVER)|process\\.env|os\\.environ|(^|[^A-Za-z0-9_])ENV)\\[${quoted}`,
+      `(process|import\\.meta)\\.env\\.${name}([^A-Za-z0-9_$]|$)`,
+    ],
+    globs: [],
+  };
 }
 
 // `mod name;` in Rust: the file that's the module, name.rs or name/mod.rs, beside a

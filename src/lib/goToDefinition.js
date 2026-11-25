@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { definitionSearch, importOf, importsByPath, pathsOf, ranked, targetAt } from "./definitions.js";
+import { definitionSearch, envReadSearch, envSetSearch, importOf, importsByPath, pathsOf, ranked, targetAt } from "./definitions.js";
+import { isDotenv } from "./dotenv.js";
 import { knownFiles, repositoryFiles } from "./repositoryFiles.js";
 
 // Going to a definition from the Files view's editor (see definitions.js): whether
@@ -38,9 +39,14 @@ export function linkAt(path, file, text, column) {
  * [{ file, line, text }], most likely first, `line` null for the top of the file. A
  * name a script imports goes to the file it's from, or its definition there; another,
  * to where a search of the repository finds it defined, or with none, what it's in, as
- * a PHP enum for its cases(), which PHP defines.
+ * a PHP enum for its cases(), which PHP defines. An environment variable goes to where
+ * the repository's .env files set it, or where the app reads it.
  */
 export async function destinations(path, file, text, target, line) {
+  if (target.kind === "env") {
+    const found = target.find === "set" ? await envSet(path, target.name) : await find(path, envReadSearch(target.name));
+    return ranked(found, file, line).slice(0, MOST_PLACES);
+  }
   if (target.kind === "path") {
     const files = await filesIn(path);
     const found = target.paths.find((p) => files.has(p));
@@ -65,7 +71,23 @@ export async function destinations(path, file, text, target, line) {
 // files of its language.
 function search(path, name, file, files = null) {
   const { patterns, globs } = definitionSearch(name, file);
-  return invoke("find_definitions", { path, patterns, globs: files ? [] : globs, files: files ?? [] });
+  return files ? find(path, { patterns, files }) : find(path, { patterns, globs });
+}
+
+// Where the .env files set the variable `name`: those git ignores too, as .env is.
+async function envSet(path, name) {
+  const files = (await repositoryFiles(path, { untracked: true })).filter(isDotenv);
+  return files.length ? find(path, { ...envSetSearch(name), files, ignored: true }) : [];
+}
+
+// The lines matching `patterns` in the repository at `path`, in `globs` or `files`, as
+// find_definitions has them.
+const find = (path, { patterns, globs = [], files = [], ignored = false }) => invoke("find_definitions", { path, patterns, globs, files, ignored });
+
+// What's said when going to `target` finds nothing.
+function nothingFound(target) {
+  if (target.kind === "env") return target.find === "set" ? `“${target.name}” isn't set in a .env file` : `Nothing reads “${target.name}”`;
+  return `No definition found for “${target.name ?? target.file}”`;
 }
 
 /**
@@ -74,7 +96,7 @@ function search(path, name, file, files = null) {
  * many; or, with none, a note that `target` wasn't found.
  */
 export function placesMenu(places, target, go) {
-  if (!places.length) return [{ label: `No definition found for “${target.name ?? target.file}”`, disabled: true }];
+  if (!places.length) return [{ label: nothingFound(target), disabled: true }];
   const many = places.length > 8;
   return [
     many && { filter: "Filter", empty: "No matches" },

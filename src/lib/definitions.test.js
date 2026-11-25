@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { definitionSearch, importOf, pathsOf, ranked, targetAt } from "./definitions.js";
+import { definitionSearch, envReadSearch, envSetSearch, importOf, pathsOf, ranked, targetAt } from "./definitions.js";
 
 // What's under the column marked | in `marked`, a line of `file`.
 function at(marked, file) {
@@ -89,6 +89,67 @@ describe("what's under the pointer", () => {
 
   test("a path that leaves the repository is nowhere", () => {
     expect(at('import x from "../../../o|ut.js";', "src/a.js").paths).toEqual([]);
+  });
+});
+
+describe("an environment variable", () => {
+  test("a program reads, goes to where it's set", () => {
+    expect(at("    'name' => env('APP_N|AME', 'Laravel'),", "config/app.php")).toEqual({ kind: "env", name: "APP_NAME", find: "set", from: 19, to: 27 });
+    expect(at("Str::slug(env('APP_NAME', 'x')), env(\"CACHE_PRE|FIX\")", "config/cache.php")).toMatchObject({ name: "CACHE_PREFIX" });
+    expect(at("$key = getenv('AWS_|KEY');", "a.php")).toMatchObject({ name: "AWS_KEY", find: "set" });
+    expect(at("$url = $_SERVER['DB_|URL'];", "a.php")).toMatchObject({ name: "DB_URL" });
+    expect(at("const mode = process.env.NODE_|ENV;", "a.js")).toMatchObject({ name: "NODE_ENV" });
+    expect(at("const key = import.meta.env.VITE_|KEY;", "a.vue")).toMatchObject({ name: "VITE_KEY" });
+    expect(at("host = os.environ.get('DB_|HOST')", "a.py")).toMatchObject({ name: "DB_HOST" });
+    // A method of the same name isn't one.
+    expect(at("if ($app->env('loc|al')) {", "a.php")).toBeNull();
+  });
+
+  test("in a .env file, its name goes to where it's read, and one a value refers to, to where it's set", () => {
+    expect(at("APP_N|AME=Laravel", ".env")).toEqual({ kind: "env", name: "APP_NAME", find: "read", from: 0, to: 8 });
+    expect(at("export DB_|HOST=localhost", ".env.example")).toMatchObject({ name: "DB_HOST", find: "read" });
+    expect(at('MAIL_FROM_NAME="${APP_N|AME}"', ".env")).toMatchObject({ name: "APP_NAME", find: "set" });
+    expect(at("URL=$HO|ST/api", ".env")).toMatchObject({ name: "HOST", find: "set" });
+    expect(at("APP_NAME=Lara|vel", ".env")).toBeNull();
+    expect(at("# The app's na|me", ".env")).toBeNull();
+  });
+
+  const matcher = (patterns) => {
+    const regexes = patterns.map((pattern) => new RegExp(pattern.replaceAll("[[:space:]]", "\\s")));
+    return (line) => regexes.some((regex) => regex.test(line));
+  };
+
+  test("is set by its line in a .env file", () => {
+    const sets = matcher(envSetSearch("APP_NAME").patterns);
+    expect(sets("APP_NAME=Laravel")).toBe(true);
+    expect(sets("export APP_NAME = x")).toBe(true);
+    expect(sets("APP_NAME_TOO=x")).toBe(false);
+    expect(sets("# APP_NAME=x")).toBe(false);
+  });
+
+  test("is read as any language reads one, in any file", () => {
+    const { patterns, globs } = envReadSearch("APP_NAME");
+    expect(globs).toEqual([]);
+    const reads = matcher(patterns);
+    for (const line of [
+      "'name' => env('APP_NAME', 'Laravel'),",
+      'Str::slug(env("APP_NAME"), "_")',
+      "getenv('APP_NAME')",
+      "Env::get('APP_NAME')",
+      "$_ENV['APP_NAME']",
+      "process.env.APP_NAME",
+      "process.env['APP_NAME']",
+      "import.meta.env.APP_NAME",
+      "os.environ['APP_NAME']",
+      'os.Getenv("APP_NAME")',
+      'std::env::var("APP_NAME")',
+      "ENV.fetch('APP_NAME')",
+    ]) {
+      expect(reads(line), line).toBe(true);
+    }
+    for (const line of ["env('APP_NAME_TOO')", "$app->env('APP_NAME')", "process.env.APP_NAMES", "APP_NAME=x"]) {
+      expect(reads(line), line).toBe(false);
+    }
   });
 });
 

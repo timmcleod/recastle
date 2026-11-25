@@ -81,6 +81,37 @@ describe("where a click goes", () => {
   });
 });
 
+describe("where an environment variable goes", () => {
+  const env = (n, find) => ({ kind: "env", name: n, find, from: 0, to: n.length });
+
+  test("read, to where the .env files set it, those git ignores too, the one it's in first", async () => {
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "tracked_files") return [".env", ".env.example", "config/app.php", ".envrc"];
+      return [
+        { file: ".env.example", line: 1, text: "APP_NAME=Laravel" },
+        { file: ".env", line: 2, text: "APP_NAME=Ticketing" },
+      ];
+    });
+    expect((await destinations(path, "config/app.php", "", env("APP_NAME", "set"), 16)).map((p) => p.file)).toEqual([".env", ".env.example"]);
+    expect(searches()[0]).toMatchObject({ files: [".env", ".env.example"], globs: [], ignored: true });
+    // From a .env file's ${APP_NAME}, its own first.
+    expect((await destinations(path, ".env.example", "", env("APP_NAME", "set"), 9)).map((p) => p.file)).toEqual([".env.example", ".env"]);
+  });
+
+  test("set, to where the app reads it, in any file it doesn't ignore", async () => {
+    found = [{ file: "config/app.php", line: 16, text: "'name' => env('APP_NAME', 'Laravel')," }];
+    expect(await destinations(path, ".env", "", env("APP_NAME", "read"), 2)).toEqual(found);
+    expect(searches()[0]).toMatchObject({ globs: [], files: [], ignored: false });
+  });
+
+  test("with no .env files, isn't set anywhere, and says so", async () => {
+    expect(await destinations(path, "config/app.php", "", env("APP_NAME", "set"), 16)).toEqual([]);
+    expect(searches()).toEqual([]);
+    expect(placesMenu([], env("APP_NAME", "set"), vi.fn())[0].label).toBe("“APP_NAME” isn't set in a .env file");
+    expect(placesMenu([], env("APP_NAME", "read"), vi.fn())[0].label).toBe("Nothing reads “APP_NAME”");
+  });
+});
+
 describe("the menu of places", () => {
   const place = (i) => ({ file: `src/f${i}.js`, line: i, text: `line ${i}` });
 
