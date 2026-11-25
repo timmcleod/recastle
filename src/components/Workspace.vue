@@ -82,7 +82,7 @@ import { useGitRun } from "../lib/gitRun.js";
 import { useLostCommits } from "../lib/lostCommits.js";
 import { fileManager, isMac, shortcut } from "../lib/platform.js";
 import { githubAccount } from "../lib/github.js";
-import { focusOnOpen, forgetEdits, renameEdits } from "../lib/editing.js";
+import { focusOnOpen, forgetEdits, renameEdits, requestLine } from "../lib/editing.js";
 import { closeDeleted, closeTabs, openTab, renameInTabs, shownFile } from "../lib/fileTabs.js";
 import { useFileStatuses } from "../lib/fileStatus.js";
 import { githubRemoteOf } from "../lib/githubRemote.js";
@@ -494,13 +494,15 @@ function showMatchingCommits(query) {
 // --- Back and Forward --------------------------------------------------------------
 // See navigation.js. The Back and Forward buttons are in the toolbar; Alt+arrows, below,
 // and a mouse's back and forward buttons go too.
-const { nav, go, describe, forget: forgetPlaces } = useNavigation({
+const { nav, go, jump, describe, forget: forgetPlaces } = useNavigation({
   overview,
   view: { selected, selectedCommit, selectedStash, fileFilter, detailMode, treeFile, treeReveal, comparison },
   fileShown: () => (isFiles.value && overview.value ? shownFile(overview.value.path) : null),
   // A place with no file shown was before any tab opened: with tabs open, the one
   // showing stays.
   showFile: (file) => file && openTab(overview.value.path, file),
+  fileLine: () => fileEditor.value?.line() ?? null,
+  showLine: (file, line) => requestLine(overview.value.path, file, line),
   active,
 });
 
@@ -1048,6 +1050,21 @@ async function closeFileTabs(files) {
   else if (after === before) fileEditor.value?.focus();
   // Being read: it takes them once it's shown.
   else focusOnOpen();
+}
+
+// Goes to `line` of `file`, or with none, wherever it was left, as a definition clicked
+// in the editor, the keys going with it: a place of its own, for Back to come back from.
+function goToInFiles({ file, line }) {
+  const path = overview.value.path;
+  jump(
+    () => {
+      focusOnOpen();
+      if (line != null) requestLine(path, file, line);
+      openTab(path, file);
+    },
+    file,
+    line,
+  );
 }
 
 // Closes the file showing, as with ⌘W in the editor.
@@ -1837,6 +1854,7 @@ const breadcrumb = computed(() => {
           :file="shownFile(overview.path)"
           :refresh-key="refreshKey"
           @send-to-agent="pasteToAgent"
+          @go-to="goToInFiles"
         />
       </template>
 

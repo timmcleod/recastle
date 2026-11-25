@@ -1,4 +1,4 @@
-import { reactive } from "vue";
+import { reactive, shallowRef } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { folderName } from "./format.js";
 
@@ -41,6 +41,17 @@ export async function finishSaving() {
 
 export const keyFor = (path, file) => `${path}\n${file}`;
 
+// Where each file's cursor was left, to come back to there, as an editor does: key ->
+// { anchor, head }. Not kept once Recastle quits.
+export const positions = new Map();
+
+// A line to show in a file as it opens, or in the file showing, as on going to a
+// definition there, or back to where one was gone to from: { key, line }, or null.
+export const lineRequest = shallowRef(null);
+
+/** Shows `line` of `file`, in the repository at `path`, once it's open in the Files view. */
+export const requestLine = (path, file, line) => (lineRequest.value = { key: keyFor(path, file), line });
+
 /** Whether `file` in the repository at `path` has edits that aren't saved. */
 export const isUnsaved = (path, file) => unsaved.has(keyFor(path, file));
 
@@ -57,36 +68,42 @@ export function markUnsaved(path, file, dirty) {
   invoke("set_unsaved_edits", { files }).catch(() => {});
 }
 
-/** Drops the edits not saved to `file`, or to anything in it if it's a folder, as when it's deleted. */
+/** Drops the edits not saved to `file`, or to anything in it if it's a folder, as when it's deleted, and where its cursor was left. */
 export function forgetEdits(path, file) {
   forgetWhere((repo, edited) => repo === path && (edited === file || edited.startsWith(`${file}/`)));
 }
 
-// Drops the edits not saved to each file `which(repo, file)` picks.
+// Drops the edits not saved to each file `which(repo, file)` picks, and where its cursor
+// was left.
 function forgetWhere(which) {
-  for (const key of [...unsaved, ...buffers.keys()]) {
+  for (const key of [...unsaved, ...buffers.keys(), ...positions.keys()]) {
     const [repo, edited] = key.split("\n");
     if (!which(repo, edited)) continue;
     buffers.delete(key);
+    positions.delete(key);
     markUnsaved(repo, edited, false);
   }
 }
 
-/** Drops the edits not saved in the repository at `path`, as when its tab closes. */
+/** Drops the edits not saved in the repository at `path`, as when its tab closes, and where cursors were left. */
 export function forgetEditsIn(path) {
   forgetWhere((repo) => repo === path);
 }
 
-/** Moves the edits not saved to `from`, or to anything in it if it's a folder, as when it's renamed to `to`. */
+/**
+ * Moves the edits not saved to `from`, or to anything in it if it's a folder, as when
+ * it's renamed to `to`, and where its cursor was left.
+ */
 export function renameEdits(path, from, to) {
   const moved = (file) => (file === from ? to : file.startsWith(`${from}/`) ? to + file.slice(from.length) : null);
-  for (const key of [...new Set([...unsaved, ...buffers.keys()])]) {
+  for (const key of [...new Set([...unsaved, ...buffers.keys(), ...positions.keys()])]) {
     const [repo, edited] = key.split("\n");
     const renamed = repo === path && moved(edited);
     if (!renamed) continue;
-    if (buffers.has(key)) {
-      buffers.set(keyFor(repo, renamed), buffers.get(key));
-      buffers.delete(key);
+    for (const kept of [buffers, positions]) {
+      if (!kept.has(key)) continue;
+      kept.set(keyFor(repo, renamed), kept.get(key));
+      kept.delete(key);
     }
     if (unsaved.has(key)) {
       markUnsaved(repo, edited, false);

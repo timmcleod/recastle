@@ -15,14 +15,24 @@ const QUICK_CHANGE = 800;
  * sets: selected (the sidebar item's key), selectedCommit, selectedStash, fileFilter,
  * detailMode, treeFile, treeReveal and comparison. treeReveal is only set: it's the
  * file a commit's Files tab opens on arrival. fileShown() is the file open in the Files
- * view while it's shown, and showFile(file) opens one there. overview is the
- * repository overview ref; places are only kept while a repository is open.
+ * view while it's shown, and showFile(file) opens one there; fileLine() is the line its
+ * cursor's on, or null, and showLine(file, line) shows that line of it, once it's open.
+ * overview is the repository overview ref; places are only kept while a repository is
+ * open.
  *
  * Returns nav ({ back, forward }, the places either way, newest last), go(direction),
- * describe(place) for the buttons' tooltips, and forget(), for when another repository
- * opens.
+ * jump(change), describe(place) for the buttons' tooltips, and forget(), for when another
+ * repository opens.
  */
-export function useNavigation({ overview, view, fileShown, showFile, active = () => true }) {
+export function useNavigation({
+  overview,
+  view,
+  fileShown,
+  showFile,
+  fileLine = () => null,
+  showLine = () => {},
+  active = () => true,
+}) {
   const { selected, selectedCommit, selectedStash, fileFilter, detailMode, treeFile, treeReveal, comparison } = view;
   const nav = reactive({ back: [], forward: [] });
   let here = null;
@@ -56,7 +66,9 @@ export function useNavigation({ overview, view, fileShown, showFile, active = ()
     if (here && samePlace(here, place)) return;
     const quick = here && here.selected === place.selected && Date.now() - hereSince < QUICK_CHANGE;
     if (here && !quick) {
-      nav.back.push(here);
+      // Left by another file or view, its line is no longer known here, as the cursor may
+      // have moved since it was gone to: the Files view shows the file where it was left.
+      nav.back.push({ ...here, line: null });
       if (nav.back.length > MAX_PLACES) nav.back.shift();
     }
     here = place;
@@ -64,11 +76,34 @@ export function useNavigation({ overview, view, fileShown, showFile, active = ()
     nav.forward = [];
   });
 
+  // A place in the Files view keeps the line its file's cursor is on as it's left, by
+  // Back, Forward or a jump, to come back to it there.
+  function leaving(place) {
+    if (place.file && place.file === fileShown()) place.line = fileLine();
+    return place;
+  }
+
+  /**
+   * Goes somewhere, by `change()`, to `file` at `line` in the Files view, as a definition
+   * gone to, as a place of its own, though it's in the same file, for Back to come back
+   * to the line it was gone to from.
+   */
+  function jump(change, file, line) {
+    if (!overview.value) return change();
+    const from = leaving(here ?? placeHere());
+    nav.back.push(from);
+    if (nav.back.length > MAX_PLACES) nav.back.shift();
+    nav.forward = [];
+    change();
+    here = { ...placeHere(), file, line };
+    hereSince = Date.now();
+  }
+
   async function go(direction) {
     const [from, to] = direction === "back" ? [nav.back, nav.forward] : [nav.forward, nav.back];
     const place = from.pop();
     if (!place) return;
-    if (here) to.push(here);
+    if (here) to.push(leaving(here));
     here = place;
     hereSince = 0;
     restoring = true;
@@ -83,6 +118,7 @@ export function useNavigation({ overview, view, fileShown, showFile, active = ()
     // The file it had open, or none, where the Files view is shown: what showing none
     // means is showFile's. Elsewhere both are null, and the Files view keeps its file.
     if (place.file !== fileShown()) showFile(place.file);
+    if (place.file && place.line != null) showLine(place.file, place.line);
     // Let the views settle (opening a stash's view picks one, say) before recording again.
     await nextTick();
     await nextTick();
@@ -107,7 +143,7 @@ export function useNavigation({ overview, view, fileShown, showFile, active = ()
   window.addEventListener("mouseup", onMouseup);
   onBeforeUnmount(() => window.removeEventListener("mouseup", onMouseup));
 
-  return { nav, go, describe, forget };
+  return { nav, go, jump, describe, forget };
 }
 
 // A short description of a place, for the buttons' tooltips.

@@ -5,6 +5,7 @@ import { File, GitCommitHorizontal, ListFilter, Search } from "lucide-vue-next";
 import FileIcon from "./FileIcon.vue";
 import SearchHint from "./SearchHint.vue";
 import { shortcut } from "../lib/platform.js";
+import { repositoryFiles } from "../lib/repositoryFiles.js";
 
 // The toolbar's search: files by name or path, and commits in the history being shown
 // by message, author or hash. Picking a file shows its history, picking a commit shows
@@ -35,7 +36,7 @@ const list = ref(null);
 const position = ref({});
 
 // Tracked files, and untracked ones if asked for, loaded when the search is first used
-// and after anything changes.
+// and after anything changes (see repositoryFiles.js).
 let files = null;
 const loaded = ref(0);
 watch(
@@ -52,11 +53,7 @@ watch(
 
 async function ensureFiles() {
   if (files) return;
-  try {
-    files = await invoke("tracked_files", { path: props.path, untracked: props.untracked });
-  } catch {
-    files = [];
-  }
+  files = await repositoryFiles(props.path, { untracked: props.untracked });
   loaded.value++;
 }
 

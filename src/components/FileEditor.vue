@@ -9,12 +9,15 @@ import {
   buffers,
   focusOnOpen,
   keyFor,
+  lineRequest,
   markUnsaved,
   openEditors,
+  positions,
   savesUnderWay,
   takeFocusRequest,
   unsaved,
 } from "../lib/editing.js";
+import { destinations, linkAt, placesMenu } from "../lib/goToDefinition.js";
 import { formatSize } from "../lib/format.js";
 import { isMac, shortcut } from "../lib/platform.js";
 import { settings } from "../lib/settings.js";
@@ -35,9 +38,10 @@ const props = defineProps({
   file: { type: String, default: null },
   refreshKey: { type: Number, default: 0 },
 });
-// "send-to-agent" with text to put in the agent's prompt. Its file is opened and closed
-// by its tabs (see FileTabs.vue).
-const emit = defineEmits(["send-to-agent"]);
+// "send-to-agent" with text to put in the agent's prompt; "go-to" with { file, line } to
+// go to, as a definition (line null for wherever the file was left). Its file is opened
+// and closed by its tabs (see FileTabs.vue).
+const emit = defineEmits(["send-to-agent", "go-to"]);
 
 // The editor module, loaded with the first file opened.
 let cm = null;
@@ -147,6 +151,10 @@ function hooks() {
     onSave: () => save(),
     review,
     onCursor: (state) => (status.value = cm.statusOf(state)),
+    goTo: {
+      at: (text, column) => (props.file ? linkAt(props.path, props.file, text, column) : null),
+      go: goToTarget,
+    },
     onChange: (state) => {
       if (!current) return;
       dirty.value = !state.doc.eq(current.saved);
@@ -164,6 +172,7 @@ function hooks() {
 function leave() {
   clearTimeout(autosaveTimer);
   if (!current || !view) return;
+  positions.set(current.key, cm.selectionOf(view.state));
   const left = current;
   current = null;
   saving.value = false;
@@ -219,6 +228,11 @@ async function open() {
     saving.value = !!current.writing;
     await showState(state, focus);
     if (seq !== loadSeq) return;
+    // A line asked for, or where it was left, by its edits kept or as last shown.
+    if (!showLineRequested()) {
+      const position = kept ? cm.selectionOf(state) : positions.get(key);
+      if (position) cm.showSelection(view, position);
+    }
     cm.applySettings(view, settingsNow());
     status.value = cm.statusOf(view.state);
     layout.value = { crlf: current.base.crlf, bom: current.base.bom };
@@ -235,6 +249,9 @@ async function open() {
     }
   } finally {
     if (seq === loadSeq) loading.value = false;
+    // A line asked for in a file that couldn't be shown as text, as one that couldn't
+    // be read, isn't kept for when it next opens.
+    if (seq === loadSeq && lineRequest.value?.key === keyFor(path, file)) lineRequest.value = null;
   }
 }
 
@@ -253,7 +270,44 @@ defineExpose({
   focus: () => {
     if (view && isText.value && !previewing.value) view.focus();
   },
+  // The line the cursor's on in the file showing, for Back to come back to, or null.
+  line: () => (current && view && isText.value ? cm.statusOf(view.state).line : null),
 });
+
+// --- Going to a definition ----------------------------------------------------------
+// Ctrl+click (⌘-click) on a name or a file's path goes where it's defined, or to the
+// file (see goToDefinition.js): straight there, if it's one place, or picked from a
+// list, if more. The going is the Files view's, for Back to come back (see Workspace.vue).
+
+async function goToTarget(target, line, event) {
+  const { path, file } = props;
+  const stillHere = () => props.path === path && props.file === file;
+  // The menu opens where the click was.
+  const at = { clientX: event.clientX, clientY: event.clientY, preventDefault() {} };
+  let places;
+  try {
+    places = await destinations(path, file, view.state.doc.toString(), target, line);
+  } catch (e) {
+    if (stillHere()) tell("Couldn't Look for the Definition", String(e));
+    return;
+  }
+  if (!stillHere()) return;
+  const go = (place) => emit("go-to", place);
+  if (places.length === 1) go(places[0]);
+  else openMenu(at, placesMenu(places, target, go));
+}
+
+// Shows the line asked for (see requestLine), if it's in the file showing, with the keys
+// in it. Says whether it did.
+function showLineRequested() {
+  const request = lineRequest.value;
+  if (!request || !current || !view || request.key !== current.key) return false;
+  lineRequest.value = null;
+  cm.showLine(view, request.line);
+  view.focus();
+  return true;
+}
+watch(lineRequest, showLineRequested);
 
 watch([() => props.path, () => props.file], open, { immediate: true });
 watch(

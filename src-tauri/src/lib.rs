@@ -6,6 +6,7 @@ mod commit;
 mod compare;
 mod config;
 mod conflict;
+mod definitions;
 mod errors;
 mod files;
 mod git;
@@ -235,6 +236,7 @@ pub fn run() {
             terminal::programs_available,
             terminal::terminal_foreground,
 
+            definitions::find_definitions,
             tree::tracked_files,
             tree::tree_entries,
             tree::file_contents,

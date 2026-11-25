@@ -347,7 +347,8 @@ pub(crate) fn command(workdir: &PathBuf, args: &[&str]) -> Command {
         .env("GIT_TERMINAL_PROMPT", "0");
     // File names are only ever names, never patterns: discarding "[id].tsx" mustn't
     // also discard "i.tsx". Except for stash, whose --include-untracked leaves
-    // untracked files behind with this set; it marks each name literal instead.
+    // untracked files behind with this set; it marks each name literal instead. And
+    // find_definitions (definitions.rs), which searches by patterns too, marking each.
     if args.first() != Some(&"stash") {
         command.env("GIT_LITERAL_PATHSPECS", "1");
     }

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createApp, h, nextTick, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { EditorView } from "@codemirror/view";
 import { isMac } from "./lib/platform.js";
 
 // The whole window, started as main.js starts it, on a stand-in backend. First, a check
@@ -815,12 +816,16 @@ test("Cmd+W in the Files view's editor closes the file's tab, not the window's, 
   expect(errors).toEqual([]);
 });
 
-// The Files view's editor showing, and what's in it.
-const editorView = async () => {
-  const { EditorView } = await import("@codemirror/view");
-  await until(() => !!showing().querySelector(".cm-editor"));
-  return EditorView.findFromDOM(showing().querySelector(".cm-editor"));
+// The Files view's editor showing now, if any: one, whose text is each file's in turn.
+const editorView = () => {
+  const dom = showing().querySelector(".cm-editor");
+  return dom && EditorView.findFromDOM(dom);
 };
+// The editor, once it's shown.
+async function shownEditor() {
+  await until(() => !!editorView());
+  return editorView();
+}
 const TEXT_FILE = { kind: "text", text: "Hello", size: 5, version: "1", crlf: false, bom: false };
 
 test("a file's tab closed with edits not saved asks, and closing loses them, saving nothing", async () => {
@@ -830,7 +835,7 @@ test("a file's tab closed with edits not saved asks, and closing loses them, sav
     await start();
     await showFiles(TEXT_FILE);
     openFile("README.md");
-    const view = await editorView();
+    const view = await shownEditor();
     view.dispatch({ changes: { from: 5, insert: ", world" } });
     await settle();
     showing().querySelector(".file-tabs .pane-tab.active .pane-tab-close").click();
@@ -844,8 +849,7 @@ test("a file's tab closed with edits not saved asks, and closing loses them, sav
 
     // Opened again, it's as it is on disk.
     openFile("README.md");
-    await until(() => !!showing().querySelector(".cm-content")?.textContent.includes("Hello"));
-    expect((await editorView()).state.doc.toString()).toBe("Hello");
+    await until(() => fileTabs().length === 1 && editorView()?.state.doc.toString() === "Hello");
   } finally {
     settings.autoSave = true;
   }
@@ -856,7 +860,7 @@ test("a file's tab closed, saving automatically, saves its edits first, without 
   await showFiles(TEXT_FILE);
   answers.save_working_file = "2";
   openFile("README.md");
-  const view = await editorView();
+  const view = await shownEditor();
   view.dispatch({ changes: { from: 5, insert: "!" } });
   showing().querySelector(".file-tabs .pane-tab.active .pane-tab-close").click();
   await until(() => fileTabs().length === 0);
@@ -885,4 +889,64 @@ test("coming to the Files view from one that doesn't list the changed files, the
   openFile("README.md");
   await until(() => !!showing().querySelector(".file-tabs .pane-tab-label.modified"));
   expect(row("README.md").querySelector(".name").classList).toContain("modified");
+});
+
+// Whether the editor shows `text`, its cursor on `line`.
+const showsAt = (text, line) => {
+  const state = editorView()?.state;
+  return state?.doc.toString() === text && state.doc.lineAt(state.selection.main.head).number === line;
+};
+
+test("Ctrl+click (⌘-click) on a name in the Files view goes to its definition, and Back comes back", async () => {
+  await start();
+  const { closeTabs, fileTabs: tabsOf } = await import("./lib/fileTabs.js");
+  await closeTabs(RECASTLE, [...tabsOf(RECASTLE).files]);
+  const texts = {
+    "main.js": 'import { formatSize } from "./lib/format.js";\nconsole.log(formatSize(1));\n',
+    "lib/format.js": "// Sizes, as people read them.\nexport function formatSize(bytes) {}\n",
+  };
+  answers.working_entries = [{ name: "main.js", path: "main.js", kind: "file" }];
+  answers.read_working_file = ({ file }) => ({ kind: "text", text: texts[file], size: 1, version: "1", crlf: false, bom: false });
+  answers.committed_text = null;
+  answers.tracked_files = Object.keys(texts);
+  answers.find_definitions = [{ file: "lib/format.js", line: 2, text: "export function formatSize(bytes) {}" }];
+  [...showing().querySelectorAll(".sidebar *")].find((el) => el.textContent.trim() === "Files" && el.closest("[role], button, li, .row")).click();
+  await until(() => !!row("main.js"));
+  openFile("main.js");
+  const view = await shownEditor();
+  await until(() => view.state.doc.toString() === texts["main.js"]);
+
+  // The page has no layout to find the click's place by: it's on "formatSize", line 2,
+  // which is drawn under it.
+  const at = texts["main.js"].indexOf("formatSize(1)") + 3;
+  view.posAtCoords = () => at;
+  view.coordsAtPos = () => ({ left: 0, right: 100, top: 0, bottom: 20 });
+  const click = (clientX) => {
+    const keys = { button: 0, clientX, clientY: 10, metaKey: isMac, ctrlKey: !isMac, bubbles: true, cancelable: true };
+    view.contentDOM.dispatchEvent(new MouseEvent("mousedown", keys));
+    view.contentDOM.dispatchEvent(new MouseEvent("mouseup", keys));
+  };
+  click(50);
+  await until(() => fileTabs().includes("format.js") && showing().querySelector(".file-tabs .pane-tab.active")?.textContent.trim() === "format.js");
+  expect(calls("find_definitions")[0]).toMatchObject({ path: RECASTLE, files: ["lib/format.js"] });
+  await until(() => showsAt(texts["lib/format.js"], 2));
+
+  // Back, to the line it was gone to from.
+  document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", altKey: true, bubbles: true }));
+  await until(() => showing().querySelector(".file-tabs .pane-tab.active")?.textContent.trim() === "main.js");
+  await until(() => showsAt(texts["main.js"], 2));
+  expect(errors).toEqual([]);
+});
+
+test("a file's tab shown again has its cursor where it was left", async () => {
+  await start();
+  await showFiles({ kind: "text", text: "one\ntwo\nthree\n", size: 14, version: "1", crlf: false, bom: false });
+  openFile("README.md");
+  const view = await shownEditor();
+  await until(() => view.state.doc.lines === 4);
+  view.dispatch({ selection: { anchor: view.state.doc.line(3).from } });
+  openFile("notes.bin");
+  await until(() => showing().querySelector(".file-tabs .pane-tab.active")?.textContent.trim() === "notes.bin");
+  [...showing().querySelectorAll(".file-tabs .pane-tab")].find((tab) => tab.textContent.trim() === "README.md").click();
+  await until(() => showsAt("one\ntwo\nthree\n", 3));
 });

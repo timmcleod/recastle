@@ -18,16 +18,24 @@ function setUp({ active } = {}) {
     comparison: ref(null),
   };
   const openFiles = reactive({});
+  // The line the Files view's cursor is on, and the lines it's been asked to show.
+  const cursor = ref(1);
+  const linesShown = [];
   const { result, unmount } = mountComposable(() =>
     useNavigation({
       overview: ref({ path: "/repo" }),
       view,
       fileShown: () => (view.selected.value === "workspace:files" ? (openFiles["/repo"] ?? null) : null),
       showFile: (file) => (openFiles["/repo"] = file),
+      fileLine: () => cursor.value,
+      showLine: (file, line) => {
+        linesShown.push([file, line]);
+        cursor.value = line;
+      },
       active,
     }),
   );
-  return { ...result, view, openFiles, unmount };
+  return { ...result, view, openFiles, cursor, linesShown, unmount };
 }
 
 // Lets the views settle, as go() does, after `ms` spent in the place before.
@@ -129,6 +137,53 @@ describe("useNavigation", () => {
     window.dispatchEvent(new MouseEvent("mouseup", { button: 3 }));
     await nextTick();
     expect(view.selected.value).toBe("branch:main");
+  });
+
+  test("a jump to a definition is a place of its own, in the same file too, and Back comes back to its line", async () => {
+    const { nav, go, jump, view, openFiles, cursor, linesShown } = setUp();
+    await moveTo(() => {
+      view.selected.value = "workspace:files";
+      openFiles["/repo"] = "src/a.js";
+    });
+    cursor.value = 12;
+    // Within the file, at once: no time spent there makes it any less a place.
+    jump(() => (cursor.value = 40), "src/a.js", 40);
+    await nextTick();
+    jump(
+      () => {
+        openFiles["/repo"] = "src/b.js";
+        cursor.value = 7;
+      },
+      "src/b.js",
+      7,
+    );
+    await nextTick();
+    expect(nav.back.map((p) => [p.file, p.line])).toEqual([
+      ["src/a.js", 12],
+      ["src/a.js", 40],
+    ]);
+
+    await go("back");
+    expect(openFiles["/repo"]).toBe("src/a.js");
+    expect(linesShown.at(-1)).toEqual(["src/a.js", 40]);
+    await go("back");
+    expect(linesShown.at(-1)).toEqual(["src/a.js", 12]);
+    // Forward again, to where the cursor was as it was left.
+    await go("forward");
+    expect(linesShown.at(-1)).toEqual(["src/a.js", 40]);
+    expect(nav.forward.map((p) => [p.file, p.line])).toEqual([["src/b.js", 7]]);
+  });
+
+  test("a place gone to, then left for another file, comes back where the file was left, not where it was gone to", async () => {
+    const { nav, jump, view, openFiles, cursor } = setUp();
+    await moveTo(() => {
+      view.selected.value = "workspace:files";
+      openFiles["/repo"] = "src/a.js";
+    });
+    jump(() => (cursor.value = 2), "src/a.js", 2);
+    cursor.value = 50;
+    await moveTo(() => (openFiles["/repo"] = "src/b.js"));
+    expect(nav.back.at(-1)).toMatchObject({ file: "src/a.js", line: null });
   });
 
   test("forget starts over, for another repository", async () => {

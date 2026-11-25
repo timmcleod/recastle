@@ -1,12 +1,38 @@
-import { basicSetup } from "codemirror";
 import { Compartment, countColumn, EditorState, Facet, Prec, RangeSet, StateEffect, StateField, Text } from "@codemirror/state";
-import { Decoration, EditorView, gutter, GutterMarker, keymap, ViewPlugin, WidgetType } from "@codemirror/view";
-import { indentWithTab } from "@codemirror/commands";
-import { gotoLine } from "@codemirror/search";
+import {
+  Decoration,
+  drawSelection,
+  dropCursor,
+  EditorView,
+  gutter,
+  GutterMarker,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  keymap,
+  lineNumbers,
+  rectangularSelection,
+  ViewPlugin,
+  WidgetType,
+} from "@codemirror/view";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { gotoLine, highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
 import { Chunk } from "@codemirror/merge";
-import { HighlightStyle, indentUnit, LanguageDescription, syntaxHighlighting } from "@codemirror/language";
+import {
+  bracketMatching,
+  defaultHighlightStyle,
+  foldGutter,
+  foldKeymap,
+  HighlightStyle,
+  indentOnInput,
+  indentUnit,
+  LanguageDescription,
+  syntaxHighlighting,
+} from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { tags as t } from "@lezer/highlight";
+import { isMac } from "./platform.js";
 
 // The Files view's editor: CodeMirror, in Recastle's colors and fonts, loaded the first
 // time a file is opened there. Each file's editor state is made here; FileEditor.vue
@@ -59,6 +85,8 @@ const theme = EditorView.theme({
     cursor: "pointer",
   },
   ".cm-review-note": { padding: "1px 0" },
+  // What Ctrl+click (⌘-click) goes to, under the pointer with the key held.
+  ".cm-goto-link": { textDecoration: "underline", textUnderlineOffset: "2px", cursor: "pointer" },
   ".cm-changes-gutter": { width: "6px", backgroundColor: "var(--diff-gutter-bg)" },
   ".cm-changes-gutter .cm-gutterElement": { padding: "0", cursor: "pointer" },
   ".cm-change-mark": { height: "100%", width: "3px", margin: "0 1px", borderRadius: "1px" },
@@ -156,8 +184,8 @@ const wrapping = new Compartment();
 // is shown in a new one (see rebind).
 const host = new Compartment();
 const hostHooks = Facet.define({ combine: (values) => values[0] ?? {} });
-const hostOf = ({ onSave, onChange, onCursor, review = null }) => [
-  hostHooks.of({ onSave, onChange, onCursor }),
+const hostOf = ({ onSave, onChange, onCursor, goTo = null, review = null }) => [
+  hostHooks.of({ onSave, onChange, onCursor, goTo }),
   reviewHooks.of(review),
 ];
 
@@ -500,6 +528,152 @@ const reviewExtensions = (hooks) =>
       ]
     : [];
 
+// --- Going to a definition -----------------------------------------------------------
+// With Ctrl (⌘) held, what's under the pointer that goes somewhere is underlined, as a
+// link, and clicking it goes there. The page says what does and where to (see
+// goToDefinition.js), by its `goTo` hook: at(text, column), a line's text and where in
+// it, gives { from, to, ... } or null, and go(target, line, event) goes to what `at`
+// gave, from line `line`. Alt+click adds a cursor instead (see basics, below).
+
+const modHeld = (event) => (isMac ? event.metaKey : event.ctrlKey);
+
+// What `pos` is on that goes somewhere: { from, to, target, line }, or null.
+function linkAtPos(state, pos) {
+  const goTo = state.facet(hostHooks).goTo;
+  if (!goTo) return null;
+  const line = state.doc.lineAt(pos);
+  const target = goTo.at(line.text, pos - line.from);
+  return target ? { from: line.from + target.from, to: line.from + target.to, target, line: line.number } : null;
+}
+
+/**
+ * What's under the pointer at `x`, `y` in `view` that goes somewhere, as the page's goTo
+ * hook says: { from, to, target, line }, or null. Only with the pointer on it, not on
+ * the space beside it, which posAtCoords takes as nearest.
+ */
+export function linkUnder(view, x, y) {
+  const pos = view.posAtCoords({ x, y });
+  const link = pos == null ? null : linkAtPos(view.state, pos);
+  if (!link) return null;
+  const start = view.coordsAtPos(link.from, 1);
+  const end = view.coordsAtPos(link.to, -1);
+  const on = start && end && x >= start.left && x <= end.right && y >= Math.min(start.top, end.top) && y <= Math.max(start.bottom, end.bottom);
+  return on ? link : null;
+}
+
+const setLink = StateEffect.define();
+const linkMark = Decoration.mark({ class: "cm-goto-link" });
+const linkField = StateField.define({
+  create: () => null,
+  update(link, tr) {
+    for (const effect of tr.effects) if (effect.is(setLink)) link = effect.value;
+    return tr.docChanged ? null : link;
+  },
+  provide: (field) => EditorView.decorations.from(field, (link) => (link ? Decoration.set([linkMark.range(link.from, link.to)]) : Decoration.none)),
+});
+
+// Underlines the link under the pointer while Ctrl (⌘) is held, as the pointer moves or
+// the key's pressed with it still.
+const linkHover = ViewPlugin.fromClass(
+  class {
+    constructor(view) {
+      this.view = view;
+      this.pointer = null;
+      this.onKey = (event) => this.show(modHeld(event));
+      this.onBlur = () => this.show(false);
+      window.addEventListener("keydown", this.onKey);
+      window.addEventListener("keyup", this.onKey);
+      window.addEventListener("blur", this.onBlur);
+    }
+    show(held) {
+      const { view, pointer } = this;
+      const link = held && pointer ? linkUnder(view, pointer.x, pointer.y) : null;
+      const shown = view.state.field(linkField);
+      if (shown?.from !== link?.from || shown?.to !== link?.to) view.dispatch({ effects: setLink.of(link && { from: link.from, to: link.to }) });
+    }
+    destroy() {
+      window.removeEventListener("keydown", this.onKey);
+      window.removeEventListener("keyup", this.onKey);
+      window.removeEventListener("blur", this.onBlur);
+    }
+  },
+  {
+    eventHandlers: {
+      mousemove(event) {
+        this.pointer = { x: event.clientX, y: event.clientY };
+        this.show(modHeld(event));
+      },
+      mouseleave() {
+        this.pointer = null;
+        this.show(false);
+      },
+    },
+  },
+);
+
+const goToClick = EditorView.domEventHandlers({
+  mousedown(event, view) {
+    if (event.button !== 0 || !modHeld(event)) return false;
+    const link = linkUnder(view, event.clientX, event.clientY);
+    if (!link) return false;
+    event.preventDefault();
+    // The cursor goes where the click was, for Back to come back to there.
+    view.dispatch({ selection: { anchor: view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? link.from } });
+    view.state.facet(hostHooks).goTo.go(link.target, link.line, event);
+    return true;
+  },
+});
+
+const goToDefinitions = [linkField, linkHover, Prec.highest(goToClick)];
+
+/** Puts the cursor at the start of `line` (from 1), in the middle of the editor. */
+export function showLine(view, line) {
+  const { from } = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
+  view.dispatch({ selection: { anchor: from }, effects: EditorView.scrollIntoView(from, { y: "center" }) });
+}
+
+/** Where the cursor is, to come back to with showSelection. */
+export const selectionOf = (state) => ({ anchor: state.selection.main.anchor, head: state.selection.main.head });
+
+/** Puts the cursor back where selectionOf had it, or as near as the text allows, in view. */
+export function showSelection(view, { anchor, head }) {
+  const end = view.state.doc.length;
+  const at = (pos) => Math.min(pos, end);
+  view.dispatch({ selection: { anchor: at(anchor), head: at(head) }, effects: EditorView.scrollIntoView(at(head), { y: "center" }) });
+}
+
+// --- The editor's basics -------------------------------------------------------------
+// CodeMirror's basicSetup, as its docs suggest copying it once it needs configuring, for
+// the mouse: Alt+click adds a cursor (Ctrl+click goes to a definition), and Shift+Alt+drag
+// selects a block, as in VS Code. With basicSetup's Alt+drag, a block selected would be
+// added to the cursors already there, as Alt+click adds one. Its crosshair, shown while
+// Alt's held, is left out, as Alt alone no longer selects a block, and its lint keys,
+// with nothing linting.
+
+const addsCursor = (event) => event.altKey && !event.shiftKey;
+const selectsBlock = (event) => event.altKey && event.shiftKey;
+
+const basics = [
+  lineNumbers(),
+  highlightActiveLineGutter(),
+  highlightSpecialChars(),
+  history(),
+  foldGutter(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  EditorView.clickAddsSelectionRange.of(addsCursor),
+  indentOnInput(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  bracketMatching(),
+  closeBrackets(),
+  autocompletion(),
+  rectangularSelection({ eventFilter: selectsBlock }),
+  highlightActiveLine(),
+  highlightSelectionMatches(),
+  keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...completionKeymap]),
+];
+
 // --- Status -----------------------------------------------------------------------
 
 /** Where the cursor is and how the text is laid out, for the status bar. */
@@ -521,11 +695,11 @@ export function goToLine(view) {
   gotoLine(view);
 }
 
-export function createState(text, file, { tabSize, highlight, wrap, readOnly = false, onSave, onChange, onCursor, review = null }) {
+export function createState(text, file, { tabSize, highlight, wrap, readOnly = false, onSave, onChange, onCursor, goTo = null, review = null }) {
   return EditorState.create({
     doc: text,
     extensions: [
-      basicSetup,
+      basics,
       keymap.of([indentWithTab]),
       Prec.highest(
         keymap.of([
@@ -534,8 +708,9 @@ export function createState(text, file, { tabSize, highlight, wrap, readOnly = f
           { key: "Ctrl-g", run: gotoLine, preventDefault: true },
         ]),
       ),
-      host.of(hostOf({ onSave, onChange, onCursor, review })),
+      host.of(hostOf({ onSave, onChange, onCursor, goTo, review })),
       reviewExtensions(review),
+      goToDefinitions,
       changes,
       changeGutter,
       theme,

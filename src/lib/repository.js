@@ -2,6 +2,7 @@ import { onBeforeUnmount, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { NOT_A_REPOSITORY, isError } from "./errors.js";
 import { oneAtATime } from "./oneAtATime.js";
+import { filesChanged } from "./repositoryFiles.js";
 
 /**
  * Loading the tab's repository, and refreshing it as it changes. The state is the
@@ -123,6 +124,8 @@ export function useRepository({
       folderGone.value = true;
       return;
     }
+    // Before the views hear of it, so those that read its files read them again.
+    filesChanged(path);
     refreshKey.value++;
     await loadRepository(path, { quiet: true });
   });
