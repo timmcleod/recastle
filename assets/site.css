@@ -898,10 +898,11 @@ section[id] { scroll-margin-top: 72px; }
 .download {
   /* The picture's height. The gate's walkway runs to its bottom, and the cards stand at
      the walkway's end, so the heading's block reaches down to there. */
-  --sky: min(1150px, 62vw + 380px);
+  --sky: min(920px, 40vw + 420px);
+  --top: 80px;
   position: relative;
   isolation: isolate;
-  padding: 112px 0;
+  padding: var(--top) 0 112px;
   overflow: clip;
 }
 .download-sky {
@@ -915,7 +916,7 @@ section[id] { scroll-margin-top: 72px; }
   mask-image: linear-gradient(#000 0%, #000 84%, transparent 100%);
 }
 .download-sky::before { display: none; }
-.download-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; min-height: calc(var(--sky) * 0.86 - 112px); }
+.download-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; min-height: calc(var(--sky) * 0.86 - var(--top)); }
 .download-head h2 { color: #fff; font-size: clamp(36px, 4.4vw, 54px); text-shadow: 0 2px 18px rgba(6, 12, 30, 0.55); }
 .download-head p { margin: 0; max-width: 560px; font-size: 18px; color: rgba(255, 255, 255, 0.92); text-shadow: 0 1px 12px rgba(6, 12, 30, 0.6); }
 .download-head .note { color: #fff; font-weight: 600; }
