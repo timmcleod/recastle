@@ -719,6 +719,7 @@ fn encode_branch(branch: &str) -> String {
 /// GitHub's refusals about pull requests in plain words. Those about the token start
 /// with TOKEN_HELP.
 fn plain(error: String) -> String {
+    let error = crate::github::in_moved_repo(error);
     if error.contains("Resource not accessible by personal access token") {
         format!(
             "{TOKEN_HELP}Your GitHub token isn't allowed to do that. Fine-grained tokens need the Pull requests \

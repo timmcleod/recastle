@@ -955,12 +955,16 @@ export function useGitActions({
   // it to the new repository, and its branches become the new one's: any the new one
   // hasn't got go as it's fetched from, and local branches that tracked them lose
   // their upstream.
-  async function changeRemoteUrl(name) {
+  // `suggested` fills the form in place of the current URL, as where its repository's
+  // moved to.
+  async function changeRemoteUrl(name, suggested = null) {
     const url = overview.value.remotes.find((r) => r.name === name)?.url ?? "";
     const values = await openForm({
       title: "Change Remote URL",
       message: `The address “${name}” fetches from and pushes to. Change it when the repository has moved or been renamed. Recastle checks that the new URL can be reached before changing it.`,
-      fields: [{ key: "url", label: "URL", type: "text", value: url, placeholder: "https://github.com/owner/repository.git" }],
+      fields: [
+        { key: "url", label: "URL", type: "text", value: suggested ?? url, placeholder: "https://github.com/owner/repository.git" },
+      ],
       confirmLabel: "Change URL",
     });
     if (!values || values.url.trim() === url) return;
@@ -1084,6 +1088,7 @@ export function useGitActions({
     moveCommits,
     addMenu,
     remoteMenu,
+    changeRemoteUrl,
     pull,
     forcePush,
     publishBranch,

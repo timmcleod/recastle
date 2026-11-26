@@ -86,6 +86,90 @@ describe("which repository", () => {
     expect(result.issueRepos.value.map((r) => `${r.owner}/${r.repo}`)).toEqual(["me/app", "upstream/app"]);
   });
 
+  test("that's moved on GitHub says where to, until its remote's pointed there", async () => {
+    github["me/app"].features = { issues: true, pulls: true, moved_to: "neworg/app" };
+    github["neworg/app"] = { parent: null, features: { issues: true, pulls: true, moved_to: null }, issues: [], pulls: 0 };
+    const { result } = setUp();
+    await settle();
+    expect(result.movedTo.value).toEqual({ owner: "neworg", repo: "app" });
+    expect(result.moveFix.value).toEqual({ remote: "origin", url: "git@github.com:neworg/app.git" });
+    state.overview.value = { path: "/app", remotes: [remote("origin", "neworg/app")] };
+    await settle();
+    expect(result.movedTo.value).toBeNull();
+    expect(result.moveFix.value).toBeNull();
+  });
+
+  test("that's moved is followed by origin, of the remotes that point to it", async () => {
+    state.overview.value.remotes = [remote("github", "me/app"), remote("origin", "me/app")];
+    github["me/app"].features = { issues: true, pulls: true, moved_to: "neworg/app" };
+    const { result } = setUp();
+    await settle();
+    expect(result.moveFix.value.remote).toBe("origin");
+  });
+
+  test("that's moved isn't counted, as it can't be searched there", async () => {
+    github["me/app"].features = { issues: true, pulls: true, moved_to: "neworg/app" };
+    const { result } = setUp();
+    await settle();
+    expect(issuesCalls()).toBe(0);
+    expect(result.openIssues.value).toBeNull();
+  });
+
+  test("signed out, isn't waited for", async () => {
+    githubAccount.value = null;
+    const { result } = setUp();
+    await settle();
+    expect(result.featuresChecked.value).toBe(true);
+  });
+
+  test("is waited for again when it changes, and a late answer for the last one is let go", async () => {
+    const answers = {};
+    vi.mocked(invoke).mockImplementation(async (command, { owner, repo } = {}) => {
+      if (command === "github_fork_parent") return null;
+      if (command === "github_repo_features") return new Promise((resolve) => (answers[`${owner}/${repo}`] = resolve));
+      return { total: 0, issues: [] };
+    });
+    const { result } = setUp();
+    await settle();
+    answers["me/app"]({ issues: true, pulls: true, moved_to: null });
+    await settle();
+    expect(result.featuresChecked.value).toBe(true);
+
+    // Asked about a second, it's waited for again, and a third, before it's answered.
+    state.overview.value = { path: "/second", remotes: [remote("origin", "me/second")] };
+    await settle();
+    expect(result.featuresChecked.value).toBe(false);
+    state.overview.value = { path: "/third", remotes: [remote("origin", "me/third")] };
+    await settle();
+    expect(result.issueRepo.value).toMatchObject({ repo: "third" });
+
+    // The second's answer, come late, changes nothing; the third's is waited for.
+    answers["me/second"]({ issues: true, pulls: true, moved_to: "neworg/second" });
+    await settle();
+    expect(result.featuresChecked.value).toBe(false);
+    expect(result.movedTo.value).toBeNull();
+    answers["me/third"]({ issues: true, pulls: true, moved_to: null });
+    await settle();
+    expect(result.featuresChecked.value).toBe(true);
+  });
+
+  test("is listed only once GitHub's said whether it's moved, or failed to", async () => {
+    let answer;
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "github_fork_parent") return null;
+      if (command === "github_repo_features") return new Promise((resolve, reject) => (answer = { resolve, reject }));
+      return { total: 0, issues: [] };
+    });
+    const { result } = setUp();
+    await settle();
+    expect(result.issueRepo.value).not.toBeNull();
+    expect(result.featuresChecked.value).toBe(false);
+    answer.reject(new Error("offline"));
+    await settle();
+    expect(result.featuresChecked.value).toBe(true);
+    expect(result.movedTo.value).toBeNull();
+  });
+
   test("is the one chosen in the menu, remembered for the repository", async () => {
     state.overview.value.remotes.push(remote("other", "someone/app"));
     github["someone/app"] = { parent: null, features: { issues: true, pulls: true }, issues: [], pulls: 0 };

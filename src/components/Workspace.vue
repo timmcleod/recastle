@@ -31,6 +31,7 @@ import FileTree from "./FileTree.vue";
 import GitHubView from "./GitHubView.vue";
 import IssueDetails from "./IssueDetails.vue";
 import IssueList from "./IssueList.vue";
+import RepoMoved from "./RepoMoved.vue";
 import PullCommits from "./PullCommits.vue";
 import Spinner from "./Spinner.vue";
 import StashList from "./StashList.vue";
@@ -303,6 +304,9 @@ const {
   issueRepoMenu,
   hasIssues,
   hasPulls,
+  featuresChecked,
+  movedTo,
+  moveFix,
   openIssues,
   openPulls,
   freshIssues,
@@ -517,10 +521,12 @@ function focusToolbarSearch() {
     toolbarSearch.value.focus();
     return true;
   }
+  // Turned off, as for a repository that's moved, it's as if there were none.
   const input = viewSearch.value;
-  input?.focus();
-  input?.select();
-  return !!input;
+  if (!input || input.disabled) return false;
+  input.focus();
+  input.select();
+  return true;
 }
 
 // Any dialog, the window's or this tab's own (see overlayOpen).
@@ -1642,6 +1648,16 @@ const breadcrumb = computed(() => {
         @renamed="onFileRenamed"
         @open-terminal="(folder) => showTerminal({ newTab: true, folder })"
       />
+      <!-- While Recastle checks whether the repository is a fork, then whether it's moved,
+           as then its issues and pull requests can't be listed. -->
+      <div v-else-if="(isIssues || isPulls) && (!issueRepo || !featuresChecked)" class="empty-state"><Spinner /></div>
+      <RepoMoved
+        v-else-if="(isIssues || isPulls) && issueRepo && movedTo"
+        :from="issueRepo"
+        :to="movedTo"
+        :remote="moveFix?.remote"
+        @change="actions.changeRemoteUrl(moveFix.remote, moveFix.url)"
+      />
       <IssueList
         v-else-if="isPulls && issueRepo"
         key="pulls"
@@ -1668,8 +1684,6 @@ const breadcrumb = computed(() => {
         @count="openIssues = $event"
         @created="onIssueCreated"
       />
-      <!-- While Recastle checks whether the repository is a fork. -->
-      <div v-else-if="isIssues || isPulls" class="empty-state"><Spinner /></div>
       <StashList
         v-else-if="isStashes"
         :stashes="overview.stashes"
@@ -1793,6 +1807,7 @@ const breadcrumb = computed(() => {
           <input
             ref="viewSearch"
             v-model="pullQuery"
+            :disabled="!!movedTo"
             placeholder=" "
             aria-label="Search pull requests"
             title="Words to find, or GitHub search terms such as author:octocat"
@@ -1806,6 +1821,7 @@ const breadcrumb = computed(() => {
           <input
             ref="viewSearch"
             v-model="issueQuery"
+            :disabled="!!movedTo"
             placeholder=" "
             aria-label="Search issues"
             title="Words to find, or GitHub search terms such as author:octocat"

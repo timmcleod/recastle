@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { githubAccount, githubAccountChecked } from "./github.js";
-import { githubRemotes, repoKey } from "./githubRemote.js";
+import { githubRemotes, movedUrl, repoKey } from "./githubRemote.js";
 import { issuesSeenAt, markIssuesSeen } from "./issues.js";
 import { openMenu } from "./overlays.js";
 import { settings } from "./settings.js";
@@ -32,6 +32,9 @@ export function useIssueRepo({ overview, isIssues, isPulls, onChange }) {
   const forkParent = ref(undefined);
   // The chosen repository's key ("owner/repo"), or null for the usual one.
   const issueChoice = ref(null);
+
+  // "owner/repo" as { owner, repo }.
+  const keyToRepo = (key) => key && { owner: key.split("/")[0], repo: key.split("/")[1] };
 
   const issueRepos = computed(() => {
     const repos = issueRemotes.value;
@@ -72,8 +75,25 @@ export function useIssueRepo({ overview, isIssues, isPulls, onChange }) {
   // or null until GitHub has said. What's off is left out of the sidebar; until it's
   // known, or if asking fails, both stay, so nothing disappears for a network hiccup.
   const repoFeatures = ref(null);
+  // Whether GitHub's been asked them for this repository, and answered or failed, so
+  // the views wait for that before listing: a repository that's moved can't be listed,
+  // and would show the search's misleading failure first.
+  const featuresChecked = ref(false);
   const hasIssues = computed(() => repoFeatures.value?.issues !== false);
   const hasPulls = computed(() => repoFeatures.value?.pulls !== false);
+  // Where the repository's moved to on GitHub, as { owner, repo }, or null. Its issues
+  // and pull requests can only be listed there, once its remote's pointed at it.
+  const movedTo = computed(() => keyToRepo(repoFeatures.value?.moved_to) ?? null);
+  // How to follow it there, as { remote, url }: origin, or the first of the remotes
+  // that point to it, given the URL where it is now, written as its own was. Null when
+  // it hasn't moved, or no remote points to it, as for a fork's parent.
+  const moveFix = computed(() => {
+    const to = movedTo.value;
+    const names = issueRepo.value?.remotes ?? [];
+    const remote = names.includes("origin") ? "origin" : names[0];
+    const url = overview.value?.remotes?.find((r) => r.name === remote)?.url;
+    return to && url ? { remote, url: movedUrl(url, `${to.owner}/${to.repo}`) } : null;
+  });
 
   // How many issues and pull requests are open, null until known, and how many of the
   // issues are new: opened since the Issues view was last looked at. They're checked
@@ -97,11 +117,19 @@ export function useIssueRepo({ overview, isIssues, isPulls, onChange }) {
 
   async function checkIssues() {
     const repo = issueRepo.value;
-    if (!repo || !githubAccount.value) return;
+    if (!repo || !githubAccount.value) {
+      featuresChecked.value = true;
+      return;
+    }
     issuesCheckedAt = Date.now();
     const features = await invoke("github_repo_features", { owner: repo.owner, repo: repo.repo }).catch(() => null);
     const stillThis = () => issueRepo.value && repoKey(issueRepo.value) === repoKey(repo);
-    if (features && stillThis()) repoFeatures.value = features;
+    if (stillThis()) {
+      if (features) repoFeatures.value = features;
+      featuresChecked.value = true;
+    }
+    // Moved, it can't be searched, which is how they're counted, until it's followed.
+    if (movedTo.value) return;
     if (hasIssues.value) await countIssues(repo);
     if (!hasPulls.value) return;
     const pulls = await invoke("github_issues", { owner: repo.owner, repo: repo.repo, filters: "is:open", page: 1, pulls: true }).catch(
@@ -130,11 +158,10 @@ export function useIssueRepo({ overview, isIssues, isPulls, onChange }) {
       issueChoice.value = readJson(ISSUE_REPOS_KEY, {})[path] ?? null;
       forkParent.value = first && login ? undefined : null;
       if (!first || !login) return;
-      const [owner, repo] = first.split("/");
+      const { owner, repo } = keyToRepo(first);
       const parent = await invoke("github_fork_parent", { owner, repo }).catch(() => null);
       if (overview.value?.path !== path) return;
-      const [parentOwner, parentRepo] = parent?.split("/") ?? [];
-      forkParent.value = parent ? { owner: parentOwner, repo: parentRepo } : null;
+      forkParent.value = keyToRepo(parent) || null;
     },
     { immediate: true },
   );
@@ -146,6 +173,7 @@ export function useIssueRepo({ overview, isIssues, isPulls, onChange }) {
       freshIssues.value = 0;
       openPulls.value = null;
       repoFeatures.value = null;
+      featuresChecked.value = false;
       onChange();
       checkIssues();
     },
@@ -154,7 +182,6 @@ export function useIssueRepo({ overview, isIssues, isPulls, onChange }) {
 
   // Looking at the Issues view sees them: new ones are marked there until it's left.
   // (By key: the repository object is made afresh on every refresh.)
-  const keyToRepo = (key) => key && { owner: key.split("/")[0], repo: key.split("/")[1] };
   watch(
     [isIssues, () => issueRepo.value && repoKey(issueRepo.value)],
     ([viewing, key], [wasViewing, previous]) => {
@@ -182,6 +209,9 @@ export function useIssueRepo({ overview, isIssues, isPulls, onChange }) {
     issueRepoMenu,
     hasIssues,
     hasPulls,
+    featuresChecked,
+    movedTo,
+    moveFix,
     openIssues,
     openPulls,
     freshIssues,

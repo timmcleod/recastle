@@ -1,10 +1,22 @@
 // Which GitHub repositories the open repository's remotes point to, for the Issues
 // view. Remotes elsewhere, or behind an SSH host alias, aren't recognized.
 
+// A GitHub remote URL's end: the host, then owner and repository, then any ".git" or
+// slash, over HTTPS ("github.com/") or SSH ("github.com:").
+const GITHUB_PATH = /(github\.com[:/])([^/]+)\/([^/]+?)((?:\.git)?\/?)$/i;
+
 /** The GitHub repository a remote URL points to, as { owner, repo }, or null. */
 export function githubRepoOf(url) {
-  const match = url?.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/i);
-  return match ? { owner: match[1], repo: match[2] } : null;
+  const match = url?.match(GITHUB_PATH);
+  return match ? { owner: match[2], repo: match[3] } : null;
+}
+
+/**
+ * A remote URL pointed at the GitHub repository `to` ("owner/repo") instead, as it's
+ * moved there, written the same way: over HTTPS or SSH, with or without ".git".
+ */
+export function movedUrl(url, to) {
+  return url.replace(GITHUB_PATH, (_, host, _owner, _repo, end) => `${host}${to}${end}`);
 }
 
 /** "owner/repo", the same however it was capitalized. */

@@ -230,6 +230,14 @@ fn agent() -> ureq::Agent {
         .timeout_global(Some(Duration::from_secs(20)))
         .user_agent("Recastle")
         .http_status_as_error(false)
+        // GitHub answers a read of a repository that's moved, or been renamed, by
+        // sending it to where it is now, on the same host; without the token there, a
+        // private one would seem not to be there at all. A change (POST, PATCH, PUT,
+        // DELETE) GitHub sends on with a 307, which ureq won't follow, as it won't send
+        // a body or a DELETE again, so it fails with MOVED (see unreached). Sent on with
+        // a 301, 302 or 303 instead, ureq would follow a change as a read, which would
+        // seem to have worked; GitHub doesn't send those for changes.
+        .redirect_auth_headers(ureq::config::RedirectAuthHeaders::SameHost)
         .build()
         .into()
 }
@@ -276,7 +284,7 @@ pub(crate) fn api_post_text(token: &str, path: &str, body: serde_json::Value) ->
         .header("Accept", "application/vnd.github+json")
         .header("Authorization", format!("Bearer {token}"))
         .send_json(&body)
-        .map_err(|e| format!("Couldn't reach GitHub: {e}"))?;
+        .map_err(unreached)?;
     let status = response.status().as_u16();
     if (200..300).contains(&status) {
         return response.body_mut().read_to_string().map_err(|e| format!("Couldn't read GitHub's reply: {e}"));
@@ -299,7 +307,7 @@ fn api_as<T: serde::de::DeserializeOwned>(token: &str, method: Method, path: &st
         Method::Post(body) => agent().post(&url).header("Accept", accept).header("Authorization", &auth).send_json(&body),
         Method::Patch(body) => agent().patch(&url).header("Accept", accept).header("Authorization", &auth).send_json(&body),
     };
-    let mut response = sent.map_err(|e| format!("Couldn't reach GitHub: {e}"))?;
+    let mut response = sent.map_err(unreached)?;
     let status = response.status().as_u16();
     if status == 204 {
         return serde_json::from_value(serde_json::Value::Null).map_err(|e| e.to_string());
@@ -310,6 +318,30 @@ fn api_as<T: serde::de::DeserializeOwned>(token: &str, method: Method, path: &st
         return serde_json::from_value(body).map_err(|e| format!("GitHub's reply didn't make sense: {e}"));
     }
     Err(explain(status, body.as_ref()))
+}
+
+/// What a change fails with when GitHub sends it on elsewhere, as for something that's
+/// moved, since a change isn't followed there (see agent).
+pub(crate) const MOVED: &str = "GitHub says this has moved, so the change wasn't made.";
+
+/// MOVED, for a change to the repository a remote points to, which can be pointed at
+/// where it is now. Other errors are as they were.
+pub(crate) fn in_moved_repo(error: String) -> String {
+    if error == MOVED {
+        "This repository has moved on GitHub. Point its remote at where it is now (Change URL… in the remote's \
+         menu), then try again."
+            .into()
+    } else {
+        error
+    }
+}
+
+/// A request that got no answer from GitHub, in words.
+fn unreached(error: ureq::Error) -> String {
+    match error {
+        ureq::Error::RedirectFailed => MOVED.into(),
+        e => format!("Couldn't reach GitHub: {e}"),
+    }
 }
 
 /// Puts a refusal from GitHub into words. GitHub explains in "message", with any
@@ -345,7 +377,7 @@ pub async fn github_scopes() -> Result<Option<Vec<String>>, String> {
             .header("Accept", "application/vnd.github+json")
             .header("Authorization", format!("Bearer {token}"))
             .call()
-            .map_err(|e| format!("Couldn't reach GitHub: {e}"))?;
+            .map_err(unreached)?;
         if response.status().as_u16() != 200 {
             return Err(explain(response.status().as_u16(), None));
         }
@@ -420,7 +452,7 @@ pub async fn github_starred_recastle() -> Result<Option<bool>, String> {
             .header("Accept", "application/vnd.github+json")
             .header("Authorization", format!("Bearer {token}"))
             .call()
-            .map_err(|e| format!("Couldn't reach GitHub: {e}"))?;
+            .map_err(unreached)?;
         Ok(starred_from(response.status().as_u16()))
     })
     .await
@@ -551,7 +583,7 @@ fn check_token(token: &str) -> Result<Account, String> {
         .header("Accept", "application/vnd.github+json")
         .header("Authorization", format!("Bearer {token}"))
         .call()
-        .map_err(|e| format!("Couldn't reach GitHub: {e}"))?;
+        .map_err(unreached)?;
 
     match response.status().as_u16() {
         200 => {}
@@ -631,6 +663,11 @@ mod tests {
             "GitHub said: Repository creation failed: name already exists on this account."
         );
         assert_eq!(explain(404, Some(&serde_json::json!({ "message": "Not Found" }))), "GitHub said: Not Found");
+        assert_eq!(unreached(ureq::Error::RedirectFailed), MOVED);
+        // Said of a repository's issues or pull requests, it's the remote to change.
+        assert!(in_moved_repo(MOVED.into()).contains("Change URL…"));
+        assert_eq!(in_moved_repo("GitHub said: Not Found".into()), "GitHub said: Not Found");
+        assert!(unreached(ureq::Error::Timeout(ureq::Timeout::Global)).starts_with("Couldn't reach GitHub: "));
         assert_eq!(explain(500, None), "GitHub refused that (HTTP 500).");
         assert!(explain(401, None).starts_with("GitHub no longer accepts your token"));
     }

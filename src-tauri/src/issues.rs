@@ -196,6 +196,9 @@ pub async fn github_issue(owner: String, repo: String, number: u64) -> Result<Is
 
 #[derive(Deserialize)]
 struct RepoInfo {
+    /// Where the repository is now, "owner/repo", which differs from what was asked
+    /// for when it's moved or been renamed: GitHub answers for the old name.
+    full_name: Option<String>,
     parent: Option<Parent>,
     permissions: Option<Permissions>,
     /// Whether issues and pull requests are turned on; None where GitHub doesn't say,
@@ -204,15 +207,22 @@ struct RepoInfo {
     has_pull_requests: Option<bool>,
 }
 
-/// Which of issues and pull requests the repository has turned on.
+/// Which of issues and pull requests the repository has turned on, and where it's
+/// moved to, "owner/repo", if it has: GitHub's search, which lists them, only knows
+/// it there.
 #[derive(Serialize, Debug, PartialEq)]
 pub struct RepoFeatures {
     issues: bool,
     pulls: bool,
+    moved_to: Option<String>,
 }
 
-fn features(info: &RepoInfo) -> RepoFeatures {
-    RepoFeatures { issues: info.has_issues.unwrap_or(true), pulls: info.has_pull_requests.unwrap_or(true) }
+fn features(asked: &str, info: &RepoInfo) -> RepoFeatures {
+    RepoFeatures {
+        issues: info.has_issues.unwrap_or(true),
+        pulls: info.has_pull_requests.unwrap_or(true),
+        moved_to: info.full_name.clone().filter(|now| !now.eq_ignore_ascii_case(asked)),
+    }
 }
 
 /// Whether the repository has issues and pull requests turned on, so what's off can be
@@ -222,7 +232,7 @@ pub async fn github_repo_features(owner: String, repo: String) -> Result<RepoFea
     let token = token()?;
     blocking(move || {
         let info: RepoInfo = api_get(&token, &format!("/repos/{owner}/{repo}")).map_err(plain)?;
-        Ok(features(&info))
+        Ok(features(&format!("{owner}/{repo}"), &info))
     })
     .await
 }
@@ -398,6 +408,7 @@ pub const TOKEN_HELP: &str = "TOKEN: ";
 /// GitHub's refusals about issues in plain words. Those about the token start with
 /// TOKEN_HELP, so the Issues view can offer a way to change it.
 fn plain(error: String) -> String {
+    let error = crate::github::in_moved_repo(error);
     if error.contains("Resource not accessible by personal access token") {
         format!(
             "{TOKEN_HELP}Your GitHub token isn't allowed to do that. Fine-grained tokens need the Issues \
@@ -422,10 +433,15 @@ mod tests {
 
     #[test]
     fn reading_which_features_a_repository_has() {
-        let read = |json: &str| features(&serde_json::from_str::<RepoInfo>(json).unwrap());
-        assert_eq!(read(r#"{"has_issues": true, "has_pull_requests": false}"#), RepoFeatures { issues: true, pulls: false });
-        assert_eq!(read(r#"{"has_issues": false}"#), RepoFeatures { issues: false, pulls: true });
-        assert_eq!(read("{}"), RepoFeatures { issues: true, pulls: true });
+        let read = |json: &str| features("tim/recastle", &serde_json::from_str::<RepoInfo>(json).unwrap());
+        let turned_on = |issues, pulls| RepoFeatures { issues, pulls, moved_to: None };
+        assert_eq!(read(r#"{"has_issues": true, "has_pull_requests": false}"#), turned_on(true, false));
+        assert_eq!(read(r#"{"has_issues": false}"#), turned_on(false, true));
+        assert_eq!(read("{}"), turned_on(true, true));
+        // Answered for where it is now, it's moved, though not for a name capitalized
+        // differently.
+        assert_eq!(read(r#"{"full_name": "Tim/Recastle"}"#).moved_to, None);
+        assert_eq!(read(r#"{"full_name": "smokycastle/recastle"}"#).moved_to.as_deref(), Some("smokycastle/recastle"));
     }
 
     #[test]

@@ -498,6 +498,14 @@ describe("a remote's menu", () => {
     expect(ran()).toEqual([["set_remote_url", { name: "origin", url: "https://github.com/neworg/recastle.git" }]]);
   });
 
+  test("can be filled in with a URL to change to, as where its repository's moved", async () => {
+    const { actions, ran } = actionsOn();
+    vi.mocked(openForm).mockImplementation(async ({ fields }) => ({ url: fields[0].value }));
+    await actions.changeRemoteUrl("origin", "https://github.com/neworg/recastle.git");
+    expect(vi.mocked(openForm).mock.calls[0][0].fields[0].value).toBe("https://github.com/neworg/recastle.git");
+    expect(ran()).toEqual([["set_remote_url", { name: "origin", url: "https://github.com/neworg/recastle.git" }]]);
+  });
+
   test("left as it was, or canceled, changes nothing", async () => {
     const { actions, ran } = actionsOn();
     vi.mocked(openForm).mockResolvedValue({ url: " https://github.com/o/recastle.git " });
