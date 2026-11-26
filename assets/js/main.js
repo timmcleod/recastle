@@ -3,7 +3,7 @@
 
 import { initTheme } from './theme.js';
 import { initDownloads, initStars } from './downloads.js';
-import { initReveals, initScrub, initSpotlights, initTypeouts } from './effects.js';
+import { initReveals, initScrub, initTypeouts } from './effects.js';
 import { initGallery, initGitHubShots } from './gallery.js';
 import { initWorkflow } from './demos/workflow.js';
 import { initAgents } from './demos/agents.js';
@@ -21,7 +21,6 @@ safely('downloads', initDownloads);
 safely('stars', initStars);
 safely('reveals', initReveals);
 safely('scrub', initScrub);
-safely('spotlights', initSpotlights);
 safely('typeouts', initTypeouts);
 safely('gallery', initGallery);
 safely('GitHub screenshots', initGitHubShots);

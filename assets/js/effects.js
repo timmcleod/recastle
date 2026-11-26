@@ -1,5 +1,5 @@
 // The page's lighter touches: sections that fade in, words that light up as they scroll
-// past, cards lit where the pointer is, and a terminal that prints itself.
+// past, and a terminal that prints itself.
 
 import { calm, wait, whenSeen } from './util.js';
 
@@ -50,21 +50,6 @@ export function initScrub() {
   window.addEventListener('scroll', queue, { passive: true });
   window.addEventListener('resize', queue);
   update();
-}
-
-/** Cards marked .spotlight follow the pointer with a soft light. */
-export function initSpotlights() {
-  document.querySelectorAll('.spotlight').forEach((card) => {
-    card.addEventListener('pointermove', (event) => {
-      const box = card.getBoundingClientRect();
-      card.style.setProperty('--x', `${event.clientX - box.left}px`);
-      card.style.setProperty('--y', `${event.clientY - box.top}px`);
-    });
-    card.addEventListener('pointerleave', () => {
-      card.style.removeProperty('--x');
-      card.style.removeProperty('--y');
-    });
-  });
 }
 
 /** A <pre data-typeout> prints its lines one after another when it scrolls into view. */
