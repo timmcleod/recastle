@@ -488,3 +488,22 @@ describe("moving commits", () => {
     expect(run).not.toHaveBeenCalled();
   });
 });
+
+describe("a remote's menu", () => {
+  test("changes its URL, starting from the one it has, to fetch from the new one", async () => {
+    const { actions, ran } = actionsOn();
+    vi.mocked(openForm).mockResolvedValue({ url: "https://github.com/neworg/recastle.git" });
+    await item(actions.remoteMenu("origin"), "Change URL…").action();
+    expect(vi.mocked(openForm).mock.calls[0][0].fields[0].value).toBe("https://github.com/o/recastle.git");
+    expect(ran()).toEqual([["set_remote_url", { name: "origin", url: "https://github.com/neworg/recastle.git" }]]);
+  });
+
+  test("left as it was, or canceled, changes nothing", async () => {
+    const { actions, ran } = actionsOn();
+    vi.mocked(openForm).mockResolvedValue({ url: " https://github.com/o/recastle.git " });
+    await item(actions.remoteMenu("origin"), "Change URL…").action();
+    vi.mocked(openForm).mockResolvedValue(null);
+    await item(actions.remoteMenu("origin"), "Change URL…").action();
+    expect(ran()).toEqual([]);
+  });
+});

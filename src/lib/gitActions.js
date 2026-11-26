@@ -951,6 +951,25 @@ export function useGitActions({
     });
   }
 
+  // As when its repository's moved or renamed. The Issues and Pull Requests views follow
+  // it to the new repository, and its branches become the new one's: any the new one
+  // hasn't got go as it's fetched from, and local branches that tracked them lose
+  // their upstream.
+  async function changeRemoteUrl(name) {
+    const url = overview.value.remotes.find((r) => r.name === name)?.url ?? "";
+    const values = await openForm({
+      title: "Change Remote URL",
+      message: `The address “${name}” fetches from and pushes to. Change it when the repository has moved or been renamed. Recastle checks that the new URL can be reached before changing it.`,
+      fields: [{ key: "url", label: "URL", type: "text", value: url, placeholder: "https://github.com/owner/repository.git" }],
+      confirmLabel: "Change URL",
+    });
+    if (!values || values.url.trim() === url) return;
+    await run(["Changing remote URL…", "Changed remote URL", "Couldn't change the remote URL"], "set_remote_url", {
+      name,
+      url: values.url,
+    });
+  }
+
   async function removeRemote(name) {
     const ok = await confirm(
       `Remove the remote “${name}”?\n\nIts branches disappear from Recastle. Nothing changes on the server, and your local branches stay, though any that track one of its branches lose their upstream.`,
@@ -966,6 +985,7 @@ export function useGitActions({
       { label: `Fetch from “${name}”`, action: () => fetchRemote(name) },
       url && { label: "Copy URL", action: () => navigator.clipboard.writeText(url) },
       { separator: true },
+      { label: "Change URL…", action: () => changeRemoteUrl(name) },
       { label: "Rename…", action: () => renameRemote(name) },
       { label: "Remove…", action: () => removeRemote(name), danger: true },
     ];

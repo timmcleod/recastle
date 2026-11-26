@@ -10,6 +10,7 @@ const NETWORK = new Set([
   "publish_branch",
   "clone_repo",
   "add_remote",
+  "set_remote_url",
   "delete_remote_tag",
   "delete_remote_branch",
   "rename_remote_branch",

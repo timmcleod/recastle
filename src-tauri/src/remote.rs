@@ -2,7 +2,7 @@
 //! user's SSH agent and credential helpers, and stream git's progress to the window.
 
 use crate::cli::{Running, Runnings, git_with_progress, git_with_progress_in};
-use crate::errors::PULL_REWRITTEN;
+use crate::errors::{CANCELED, PULL_REWRITTEN};
 use std::path::{Path, PathBuf};
 use git2::Repository;
 use serde::{Deserialize, Serialize};
@@ -36,18 +36,21 @@ fn fetch_unattended(path: &str, running: &Running) -> Result<String, String> {
 }
 
 /// Adds a remote, then fetches it so its branches show straight away. If the fetch
-/// fails (a mistyped URL, no access), the remote stays, to fix or remove.
+/// fails (a mistyped URL, no access), the remote stays, to fix or remove, and as it was
+/// added, that's said as it's done, not as a failure.
 #[tauri::command]
 pub async fn add_remote(window: WebviewWindow, path: String, name: String, url: String) -> Result<String, String> {
     let (name, url) = (name.trim().to_string(), url.trim().to_string());
     if name.is_empty() || url.is_empty() {
         return Err("Enter a name and a URL for the remote.".into());
     }
-    crate::cli::git(&path, &["remote", "add", &name, &url], None).map_err(|e| explain_remote_error(&name, e))?;
+    // After "--", a URL beginning "-" is taken as a URL, never as one of git's options.
+    crate::cli::git(&path, &["remote", "add", "--", &name, &url], None).map_err(|e| explain_remote_error(&name, e))?;
     in_background(window, path.clone(), move |running, report| {
-        fetch_one(&path, &name, running, report)
-            .map(|_| format!("Added {name} and fetched its branches."))
-            .map_err(|e| format!("Added {name}, but couldn't fetch from it:\n{e}"))
+        Ok(match fetch_one(&path, &name, running, report) {
+            Ok(_) => format!("Added {name} and fetched its branches."),
+            Err(e) => format!("Added {name}, but couldn't fetch from it:\n{e}"),
+        })
     })
     .await
 }
@@ -57,6 +60,40 @@ pub async fn rename_remote(path: String, name: String, new_name: String) -> Resu
     let new_name = new_name.trim();
     crate::cli::git(&path, &["remote", "rename", &name, new_name], None).map_err(|e| explain_remote_error(new_name, e))?;
     Ok(format!("Renamed {name} to {new_name}."))
+}
+
+/// Points a remote at another URL, as when its repository's moved or renamed. See
+/// change_url.
+#[tauri::command]
+pub async fn set_remote_url(window: WebviewWindow, path: String, name: String, url: String) -> Result<String, String> {
+    in_background(window, path.clone(), move |running, report| change_url(&path, &name, &url, running, report)).await
+}
+
+// The new URL's asked first whether it's there and can be read, so a mistyped one, or
+// one without access, leaves the remote as it was, rather than changed to one that fails
+// every fetch. Then the remote's fetched from its new URL, for that repository's
+// branches; if that fails, the URL's still changed, and that's said as it's done.
+// A push URL of its own, set apart from it on purpose, is left as it is, and said so.
+fn change_url(path: &str, name: &str, url: &str, running: &Running, report: Report) -> Result<String, String> {
+    let url = url.trim();
+    if url.is_empty() {
+        return Err("Enter a URL for the remote.".into());
+    }
+    // After "--", a URL beginning "-" is taken as a URL, never as one of git's options,
+    // which could run a command of its choosing.
+    git_with_progress(path, &["ls-remote", "--", url, "HEAD"], running, &mut *report).map_err(|e| {
+        if e == CANCELED { e } else { format!("Couldn't reach {url}, so {name} still has its old URL:\n{e}") }
+    })?;
+    crate::cli::git(path, &["remote", "set-url", "--", name, url], None).map_err(|e| explain_remote_error(name, e))?;
+    let push_url = crate::cli::git(path, &["config", "--get-all", &format!("remote.{name}.pushurl")], None).unwrap_or_default();
+    let push_note = match push_url.trim() {
+        "" => String::new(),
+        kept => format!("\nIt still pushes to {kept}, its push URL of its own."),
+    };
+    Ok(match fetch_one(path, name, running, report) {
+        Ok(_) => format!("Changed {name}'s URL and fetched from it.{push_note}"),
+        Err(e) => format!("Changed {name}'s URL, but couldn't fetch from it:\n{e}{push_note}"),
+    })
 }
 
 /// Removes a remote and its remote-tracking branches. Local branches stay; any that
@@ -70,6 +107,8 @@ pub async fn remove_remote(path: String, name: String) -> Result<String, String>
 fn explain_remote_error(name: &str, error: String) -> String {
     if error.contains("already exists") {
         format!("There's already a remote called “{name}”.")
+    } else if error.contains("could not set") {
+        format!("“{name}” has more than one URL. Change them with git remote set-url in a terminal.")
     } else if error.contains("is not a valid remote name") {
         format!("“{name}” isn't a valid remote name. Use letters, numbers, hyphens and underscores.")
     } else {
@@ -376,7 +415,8 @@ fn clone_into(url: &str, dest: &Path, running: &Running, report: Report) -> Resu
     std::fs::create_dir_all(&parent).map_err(|e| format!("Couldn't create {}: {e}", parent.display()))?;
 
     // If cloning fails or is canceled, git removes what it had written.
-    git_with_progress_in(&parent, &["clone", "--progress", url, &dest.to_string_lossy()], running, report)?;
+    // After "--", a URL beginning "-" is taken as a URL, never as one of git's options.
+    git_with_progress_in(&parent, &["clone", "--progress", "--", url, &dest.to_string_lossy()], running, report)?;
     let name = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     Ok(format!("Cloned {name} into {}.", parent.display()))
 }
@@ -1118,7 +1158,60 @@ mod tests {
         let again = clone_into(&url, &dest, &Running::default(), &mut |_| {}).unwrap_err();
         assert!(again.starts_with("There's already a folder with files in it"), "{again}");
         assert!(clone_into(&url, Path::new("relative/path"), &Running::default(), &mut |_| {}).is_err());
+
+        // A "URL" git would take as an option runs nothing.
+        let elsewhere = dest.with_file_name("elsewhere");
+        let ran = dest.with_file_name("ran");
+        let option = format!("--upload-pack=touch {}; false", ran.display());
+        assert!(clone_into(&option, &elsewhere, &Running::default(), &mut |_| {}).is_err());
+        assert!(!ran.exists());
         let _ = std::fs::remove_dir_all(dest.parent().unwrap().parent().unwrap());
+    }
+
+    #[test]
+    fn changing_a_remotes_url() {
+        let (server, local) = setup("seturl");
+        let moved = TempRepo::bare("seturl-moved");
+        crate::cli::git(local.path(), &["push", moved.path(), "HEAD:refs/heads/elsewhere"], None).unwrap();
+        let change = |url: &str| change_url(local.path(), "origin", url, &Running::default(), &mut |_| {});
+        let url = || crate::cli::git(local.path(), &["remote", "get-url", "origin"], None).unwrap();
+
+        // Nothing to change to, one that can't be reached, or one git would take as an
+        // option, leaves it as it was, and runs nothing.
+        assert_eq!(change("  ").unwrap_err(), "Enter a URL for the remote.");
+        let missing = change(&(local.path().to_string() + "-missing")).unwrap_err();
+        assert!(missing.contains("origin still has its old URL"), "{missing}");
+        let ran = local.path().to_string() + "/ran";
+        assert!(change(&format!("--upload-pack=touch {ran}; false")).is_err());
+        assert!(!Path::new(&ran).exists());
+        assert_eq!(url(), server.path());
+
+        // Canceled while it's checked, that's all it says, so it's shown as canceled.
+        let canceled = Running::default();
+        canceled.close();
+        assert_eq!(change_url(local.path(), "origin", moved.path(), &canceled, &mut |_| {}), Err(CANCELED.to_string()));
+        assert_eq!(url(), server.path());
+
+        // One that can be reached is changed to, trimmed, and fetched from.
+        assert_eq!(change(&format!(" {} ", moved.path())).unwrap(), "Changed origin's URL and fetched from it.");
+        assert_eq!(url(), moved.path());
+        assert!(local.repo.find_reference("refs/remotes/origin/elsewhere").is_ok());
+
+        // If the fetch then fails, the URL's still changed, and that's said as it's done.
+        crate::cli::git(local.path(), &["config", "remote.origin.fetch", "refs/heads/missing:refs/remotes/origin/missing"], None).unwrap();
+        let unfetched = change(server.path()).unwrap();
+        assert!(unfetched.starts_with("Changed origin's URL, but couldn't fetch from it:"), "{unfetched}");
+        assert_eq!(url(), server.path());
+        crate::cli::git(local.path(), &["config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"], None).unwrap();
+
+        // A push URL of its own is kept, and said so.
+        crate::cli::git(local.path(), &["config", "remote.origin.pushurl", "/somewhere/else"], None).unwrap();
+        let kept = change(moved.path()).unwrap();
+        assert!(kept.ends_with("It still pushes to /somewhere/else, its push URL of its own."), "{kept}");
+
+        // A remote with more than one URL is left for git to change.
+        crate::cli::git(local.path(), &["remote", "set-url", "--add", "origin", server.path()], None).unwrap();
+        assert_eq!(change(server.path()).unwrap_err(), "“origin” has more than one URL. Change them with git remote set-url in a terminal.");
     }
 
     #[test]

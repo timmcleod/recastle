@@ -208,6 +208,7 @@ pub fn run() {
             remote::clone_repo,
             remote::add_remote,
             remote::rename_remote,
+            remote::set_remote_url,
             remote::remove_remote,
 
             reset::reset,
