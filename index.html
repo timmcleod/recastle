@@ -23,526 +23,431 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Recastle: run your agent, review its work, ship it. A screenshot shows Claude Code running beside the Working Copy">
 <meta name="twitter:card" content="summary_large_image">
-<style>
-@font-face{font-family:'Inter';font-style:normal;font-display:swap;font-weight:100 900;src:url(assets/fonts/inter.woff2) format('woff2')}
-@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:100 800;src:url(assets/fonts/jetbrains-mono.woff2) format('woff2')}
-html{background:#ffffff}
-body{margin:0}
-.pl{--bg:#ffffff;--bg-alt:#f8f8f8;--surface:#f4f4f4;--border:#e3e3e3;--text:#262626;--text2:#555555;--muted:#6b6b6b;--accent:#1f7cf2;--link:#1a6bd6;--btn:#1a6bd6;--btn-text:#ffffff;--btn2:#f4f4f4;--term:#131a26;--term-border:#131a26;--skel:#e9e9e9;--header:rgba(255,255,255,0.88);--add:#0969da;--rem:#bc4c00;--add-bg:#ddeeff;--rem-bg:#ffe8d1;color-scheme:light}
-@media (prefers-color-scheme: dark){html{background:#131a26}.pl{--bg:#131a26;--bg-alt:#171f2d;--surface:#212a3a;--border:#364257;--text:#e8edf5;--text2:#b1bccd;--muted:#98a3b5;--accent:#3b8ff6;--link:#5ea3f8;--btn:#3b8ff6;--btn-text:#0d1420;--btn2:#212a3a;--term:#0c121c;--term-border:#364257;--skel:#2a3446;--header:rgba(19,26,38,0.88);--add:#58a6ff;--rem:#e8873a;--add-bg:rgba(88,166,255,0.14);--rem-bg:rgba(232,135,58,0.16);color-scheme:dark}}
-.pl a{color:var(--link)}
-.pl a:hover{opacity:0.85}
-.pl-navlink{color:var(--text2) !important;text-decoration:none}
-.pl-navlink:hover{color:var(--text) !important;opacity:1 !important}
-@media (max-width: 720px){.pl-hide-sm{display:none !important}}
-.pl-seg{background:transparent;color:var(--text2)}
-.pl-seg[aria-pressed="true"]{background:var(--bg);color:var(--text)}
-.pl-seg:focus-visible,.pl a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-html{scroll-behavior:smooth}
-section[id]{scroll-margin-top:72px}
-@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
-/* No heading ends on a word of its own; body text avoids it where the browser can. */
-.pl h1,.pl h2,.pl h3{text-wrap:balance}
-.pl p,.pl li{text-wrap:pretty}
-/* A headline's sentences, kept whole where there's room, so lines break between them. */
-@media (min-width: 480px){.pl-sentence{white-space:nowrap}}
-
-</style>
+<link rel="stylesheet" href="assets/site.css">
+<script>
+// Before the page draws: the theme the visitor picked, if they picked one, and the one
+// in effect, so the page never flashes the other. assets/js/theme.js keeps them current.
+(function () {
+  var root = document.documentElement, picked = null;
+  root.classList.add('js');
+  try { picked = localStorage.getItem('recastle-theme'); } catch (e) {}
+  if (picked === 'light' || picked === 'dark') root.setAttribute('data-theme', picked);
+  var dark = picked ? picked === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  root.setAttribute('data-scheme', dark ? 'dark' : 'light');
+})();
+</script>
+<script type="module" src="assets/js/main.js"></script>
 </head>
 <body>
-<div class="pl" style="font-family: 'Inter', system-ui, 'Ubuntu', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; line-height: 1.5">
+<a class="skip-link" href="#main">Skip to content</a>
 
-<header style="position: sticky; top: 0; z-index: 20; background: var(--header); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border)">
-<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px">
-<a href="#top" style="display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 18px">
-<svg width="40" height="40" viewBox="0 0 1024 1024" aria-hidden="true"><defs><clipPath id="pi1-tile"><rect x="134" y="35" width="806" height="806" rx="183"/></clipPath><linearGradient id="pi1-sky" x1="0" y1="35" x2="0" y2="631" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2a4775"/><stop offset="0.4" stop-color="#1e3459"/><stop offset="1" stop-color="#132641"/></linearGradient><radialGradient id="pi1-vignette" cx="537" cy="380" r="520" gradientUnits="userSpaceOnUse"><stop offset="0.55" stop-color="#0b1628" stop-opacity="0"/><stop offset="1" stop-color="#0b1628" stop-opacity="0.55"/></radialGradient><linearGradient id="pi1-ground" x1="0" y1="631" x2="0" y2="841" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0f2441"/><stop offset="1" stop-color="#0c1c35"/></linearGradient><linearGradient id="pi1-arch" x1="0" y1="377" x2="0" y2="571" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0d1e37"/><stop offset="1" stop-color="#07162b"/></linearGradient><linearGradient id="pi1-road" x1="0" y1="524" x2="0" y2="841" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5aa8f3"/><stop offset="0.45" stop-color="#62b0f8"/><stop offset="1" stop-color="#56a3f2"/></linearGradient><linearGradient id="pi1-turretL" x1="0" y1="340" x2="0" y2="631" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ecf2fa"/><stop offset="0.35" stop-color="#e2ecf8"/><stop offset="1" stop-color="#8bbdf7"/></linearGradient><linearGradient id="pi1-turretR" x1="0" y1="340" x2="0" y2="631" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0f6fd"/><stop offset="0.35" stop-color="#e8f2fc"/><stop offset="1" stop-color="#98c6f9"/></linearGradient><linearGradient id="pi1-wallL" x1="300" y1="390" x2="392" y2="600" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d8e5f6"/><stop offset="0.55" stop-color="#bcd2f0"/><stop offset="1" stop-color="#4f88da"/></linearGradient><linearGradient id="pi1-wallR" x1="771" y1="390" x2="679" y2="600" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#dceafa"/><stop offset="0.55" stop-color="#c3dbf8"/><stop offset="1" stop-color="#67a3f3"/></linearGradient><linearGradient id="pi1-gateL" x1="0" y1="253" x2="0" y2="590" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e9ecf1"/><stop offset="0.55" stop-color="#e3eaf4"/><stop offset="1" stop-color="#94bff1"/></linearGradient><linearGradient id="pi1-gateR" x1="0" y1="253" x2="0" y2="590" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fcfcfd"/><stop offset="0.55" stop-color="#f3f7fc"/><stop offset="1" stop-color="#c6e0fa"/></linearGradient></defs><g transform="matrix(1.09181 0 0 1.09181 -74.30 33.79)"><g clip-path="url(#pi1-tile)"><rect x="134" y="35" width="806" height="806" fill="url(#pi1-sky)"/><rect x="134" y="631" width="806" height="210" fill="url(#pi1-ground)"/><rect x="134" y="35" width="806" height="806" fill="url(#pi1-vignette)"/><path d="M222 360 L301 339 L300 606 L184 631 Z" fill="url(#pi1-turretL)"/><path d="M301 399 L392 377 L385 588 L300 606 Z" fill="url(#pi1-wallL)"/><path d="M301 339 L309 345 L309 397 L301 399 Z" fill="#3f5a87"/><path d="M849 360 L770 339 L771 606 L887 631 Z" fill="url(#pi1-turretR)"/><path d="M770 399 L679 377 L686 588 L771 606 Z" fill="url(#pi1-wallR)"/><path d="M770 339 L762 345 L762 397 L770 399 Z" fill="#5f7dab"/><path d="M393.3 292.7 L454 278.3 L458.3 316 L500 304 L500.7 261.7 L535.5 252.7 L535.5 376.7 A67.5 67.5 0 0 0 468 444.2 L468 570 L385 588 Z" fill="url(#pi1-gateL)"/><path d="M677.7 292.7 L617 278.3 L612.7 316 L571 304 L570.3 261.7 L535.5 252.7 L535.5 376.7 A67.5 67.5 0 0 1 603 444.2 L603 570 L686 588 Z" fill="url(#pi1-gateR)"/><path d="M454 278.3 L466 284 L466 313 L458.3 316 Z" fill="#566c8d"/><path d="M617 278.3 L605 284 L605 313 L612.7 316 Z" fill="#6a82a8"/><path d="M468 571 L468 444.2 A67.5 67.5 0 0 1 603 444.2 L603 571 Z" fill="url(#pi1-arch)"/><path d="M504 524 L515 524 Q519 524 518.6 528 L511 640 L330 900 L60 900 L100 823 L177 777 L473 601 L500.4 528 Q501 524 504 524 Z" fill="url(#pi1-road)"/><path d="M567 524 L556 524 Q552 524 552.4 528 L560 640 L741 900 L1011 900 L971 823 L894 777 L598 601 L570.6 528 Q570 524 567 524 Z" fill="url(#pi1-road)"/></g><rect x="135.5" y="36.5" width="803" height="803" rx="181.5" fill="none" stroke="#4d77c2" stroke-opacity="0.8" stroke-width="4"/></g></svg>
-Recastle
-</a>
-<nav aria-label="Main" style="display: flex; align-items: center; gap: 28px; font-size: 15px">
-<a class="pl-navlink pl-hide-sm" href="#features">Features</a>
-<a class="pl-navlink pl-hide-sm" href="https://github.com/timmcleod/recastle">GitHub</a>
-<a href="#download" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 8px; background: var(--btn); color: var(--btn-text); text-decoration: none; font-size: 14px; font-weight: 600; box-sizing: border-box">
-<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-Download
-</a>
+<header class="site-header">
+<div class="wrap header-row">
+<a class="brand" href="#top"><img src="favicon.svg" alt="" width="34" height="34">Recastle</a>
+<nav class="nav" aria-label="Main">
+<a class="nav-link hide-sm" href="#try">See it work</a>
+<a class="nav-link hide-sm" href="#agents">Features</a>
+<a class="nav-link hide-sm" href="https://github.com/timmcleod/recastle">GitHub</a>
+<button class="icon-button" type="button" data-theme-toggle aria-label="Use the dark theme">
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+</button>
+<a class="button button-small" href="#download"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download</a>
 </nav>
 </div>
 </header>
 
-<section id="top" style="padding: 88px 24px 96px">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 56px">
-<div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px">
-<h1 style="margin: 0; max-width: 860px; font-size: clamp(40px, 6vw, 72px); line-height: 1.05; letter-spacing: -0.035em; font-weight: 600"><span class="pl-sentence">Run your agent.</span> <span class="pl-sentence">Review its work.</span> <span class="pl-sentence">Ship it.</span></h1>
-<p style="margin: 0; max-width: 640px; font-size: 20px; line-height: 1.55; color: var(--text2)">Your agent writes the code. Recastle shows you what changed. You decide what gets shipped.</p>
-<div style="margin-top: 6px"><div data-cta style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px">
-<a href="#download" data-cta-main style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 24px; border-radius: 10px; background: var(--btn); color: var(--btn-text); text-decoration: none; font-size: 17px; font-weight: 600; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span data-cta-label>Download</span></a>
-<a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" data-cta-alt hidden style="font-size: 15px; color: var(--link); text-decoration: none">or AppImage</a>
-</div></div>
-<p data-windows-note hidden style="margin: -6px 0 0; font-size: 15px; color: var(--text2)">Recastle is for macOS and Linux. There's no Windows version yet.</p>
-<p style="margin: 0; font-size: 15px; color: var(--text2)">Free and open source · For macOS and Linux · No sign-up · <a href="https://github.com/timmcleod/recastle" data-stars-link style="color: var(--link); text-decoration: none">Source on GitHub</a></p>
-<p style="margin: -8px 0 0; font-size: 14px; color: var(--muted)">Other platforms: <a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_universal.dmg" data-asset="dmg" style="color: var(--link); text-decoration: none">macOS</a> · <a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.deb" style="color: var(--link); text-decoration: none">Linux .deb</a> · <a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" style="color: var(--link); text-decoration: none">AppImage</a></p>
+<main id="main">
+
+<!-- Hero: the headline, the download, and a working demo of the whole loop -->
+<section id="top" class="hero">
+<div class="hero-sky" aria-hidden="true"></div>
+<div class="wrap hero-copy">
+<h1><span class="headline-step" data-hero-step="run">Run your agent.</span> <span class="headline-step" data-hero-step="review">Review its work.</span> <span class="headline-step" data-hero-step="ship">Ship it.</span></h1>
+<p class="lede">Your agent writes the code. Recastle shows you what changed. You decide what gets shipped.</p>
+<div class="cta" data-cta>
+<a class="button button-large" href="#download" data-cta-main><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span data-cta-label>Download</span></a>
+<a class="cta-alt" href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" data-cta-alt hidden>or AppImage</a>
+<a class="button button-large button-quiet" href="#try">Watch it work</a>
+</div>
+<p class="note" data-windows-note hidden>Recastle is for macOS and Linux. There's no Windows version yet.</p>
+<p class="fine-print">Free and open source · For macOS and Linux · No sign-up · <a href="https://github.com/timmcleod/recastle" data-stars-link>Source on GitHub</a></p>
+<p class="fine-print">Other platforms: <a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_universal.dmg">macOS</a> · <a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.deb">Linux .deb</a> · <a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage">AppImage</a></p>
 </div>
 
-<!-- Hero screenshot with a light / dark toggle -->
-<div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 20px">
-<div role="group" aria-label="Screenshot theme" style="display: inline-flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border)">
-<button type="button" class="pl-seg" data-shot="light" aria-pressed="true" style="min-height: 36px; padding: 0 16px; border: 0; border-radius: 7px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;">Light theme</button>
-<button type="button" class="pl-seg" data-shot="dark" aria-pressed="false" style="min-height: 36px; padding: 0 16px; border: 0; border-radius: 7px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;">Dark theme</button>
+<div class="wrap wrap-wide demo-stage" id="try">
+<div class="demo-bar">
+<ol class="steps" aria-label="Where the demo is">
+<li data-step="run"><span class="step-dot" aria-hidden="true"></span>Run</li>
+<li data-step="review"><span class="step-dot" aria-hidden="true"></span>Review</li>
+<li data-step="ship"><span class="step-dot" aria-hidden="true"></span>Ship</li>
+</ol>
+<p class="coach" data-coach></p>
+<button class="pause-button" type="button" data-pause aria-pressed="false" aria-label="Pause the demo"><svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg><span data-pause-label>Pause</span></button>
 </div>
-<figure style="margin: 0; width: 100%; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 30px 80px rgba(19,26,38,0.22), 0 0 0 1px rgba(19,26,38,0.08)">
-<!-- Both themes are in the page, so the toggle shows one that has already loaded -->
-<img class="hero-shot" data-shot="light" src="assets/hero-light.webp" alt="Recastle in the light theme, showing the lantern repository: the Working Copy with four changed files and the commit message &quot;Count words as you type&quot;, the diff for src/components/NoteEditor.vue with Stage Chunk and Discard Chunk on each change, and below it Claude Code listing what to check before committing" width="1600" height="898" style="display: block; width: 100%; height: auto">
-<img class="hero-shot" data-shot="dark" src="assets/hero-dark.webp" alt="Recastle in the dark theme, showing the lantern repository: the Working Copy with four changed files and the commit message &quot;Count words as you type&quot;, the diff for src/components/NoteEditor.vue with Stage Chunk and Discard Chunk on each change, and below it Claude Code listing what to check before committing" width="1600" height="898" style="display: none; width: 100%; height: auto">
+
+<!-- The workflow demo. Its panes are filled, and it's played, by assets/js/demos/workflow.js. -->
+<div class="app app-workflow" data-demo="workflow" role="region" aria-label="A demo of Recastle, playing by itself: an agent makes changes, which are reviewed, committed and pushed">
+<div class="app-titlebar">
+<span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+<div class="window-tab is-current">
+<span class="agent-state" data-agent-state="working" aria-hidden="true"></span>
+<span class="window-tab-text"><b>lantern</b><small data-tab-sub>word-count · agent working</small></span>
+</div>
+<div class="titlebar-tools">
+<button class="tool-button" type="button" data-push disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Push<span class="count-badge" data-push-count hidden></span></button>
+</div>
+</div>
+<div class="workflow-body">
+<aside class="app-sidebar" aria-label="Sidebar">
+<p class="sidebar-heading">Workspace</p>
+<button class="sidebar-item" type="button" data-view="changes"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-8l-2-3H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1Z"/></svg>Working Copy<span class="sidebar-count" data-changes-count></span></button>
+<button class="sidebar-item" type="button" data-view="history"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6"/></svg>History</button>
+<p class="sidebar-heading">Branches</p>
+<span class="sidebar-item is-static"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-10 7"/></svg>main</span>
+<span class="sidebar-item is-static is-head"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-10 7"/></svg>word-count<span class="ref-badge ref-head">HEAD</span></span>
+</aside>
+<div class="changes-pane">
+<div class="pane-head"><span>Working Copy</span><span class="pane-meta" data-changes-label></span></div>
+<ul class="file-list" data-files aria-label="Changed files"></ul>
+<div class="commit-box">
+<label class="visually-hidden" for="demo-message">Commit message</label>
+<input id="demo-message" class="commit-message" data-message value="Count words as you type" autocomplete="off" spellcheck="false">
+<button class="button commit-button" type="button" data-commit disabled>Commit</button>
+</div>
+</div>
+<div class="detail-pane" data-detail></div>
+<div class="terminal-pane">
+<div class="terminal-tabs"><span class="terminal-tab"><span class="claude-mark" aria-hidden="true">✻</span>Claude</span></div>
+<div class="terminal" data-terminal aria-label="Terminal"></div>
+</div>
+</div>
+</div>
+<noscript><img class="shot" src="assets/hero-light.webp" alt="Recastle showing the Working Copy with four changed files, a diff with Stage Chunk and Discard Chunk on each change, and Claude Code in the terminal below" width="1600" height="898"></noscript>
+
+<ul class="ticks ticks-row">
+<li>Stage, unstage or discard whole files, single chunks or individual lines.</li>
+<li>Write the message, commit, or amend the last commit in place.</li>
+<li>Changed your mind? Undo a commit, discard, merge, rebase or reset, and get back exactly what it changed.</li>
+<li>Discarding a whole file moves it to the Trash, not into the void.</li>
+<li>Stash everything or just selected files, then apply or drop them from the Stashes view.</li>
+</ul>
+</div>
+</section>
+
+<!-- Why: the paragraph lights up word by word as it scrolls past -->
+<section class="section why">
+<div class="wrap wrap-narrow">
+<p class="eyebrow">Why Recastle</p>
+<h2>When your agent writes the code, your job changes.</h2>
+<p class="why-text">You spend less time typing and more time steering, reading diffs and deciding what to commit. Most tools weren't built for that: the Git client, the editor and the terminal live in separate windows, and you glue them together yourself.</p>
+<p class="scrub" data-scrub>Recastle isn't an IDE, and it's more than a Git client: it's a workbench for reviewing and shipping what your agent writes.</p>
+<p class="why-aside">There's no autocomplete, debugger or plugin system. If your agent does most of the writing, you may not miss them.</p>
+</div>
+</section>
+
+<!-- Agents: tabs of agents at work, and New Agent Task -->
+<section class="section section-alt" id="agents">
+<div class="wrap split">
+<div class="copy reveal">
+<p class="eyebrow">Agents</p>
+<h2>Several agents at once.</h2>
+<p>Recastle works with <strong>Claude Code</strong>, <strong>Codex</strong>, <strong>Gemini CLI</strong> and other agents that run in a terminal. Describe a task, and <strong>New Agent Task</strong> makes a branch for it in a worktree of its own and opens it in a new tab, with your agent already working on it.</p>
+<ul class="ticks">
+<li>Each tab shows whether its agent is working, finished or waiting on you, and how many files it has changed. Recastle lets you know when one finishes while you're looking elsewhere.</li>
+<li>Open any repository in a tab of its own with <kbd>Ctrl+T</kbd> (<kbd>⌘T</kbd> on a Mac), or in a new window. Drag tabs to reorder them.</li>
+<li>Set the command each repository's agent tab runs, such as Claude Code without permission prompts.</li>
+<li>Drop a screenshot or any file on the terminal, and its path goes into your agent's prompt.</li>
+<li>Add a shell tab for your test runner or dev server, which keeps running while you look at another repository.</li>
+<li>Closing a tab or window, or quitting, with work in progress, a busy terminal or an unsaved file, asks first and says what's at stake.</li>
+</ul>
+</div>
+<div class="demo-column reveal">
+<div class="watch-bar"><p class="watch-caption" data-caption>Three agents at once, each in a worktree of its own.</p><button class="pause-button" type="button" data-pause aria-pressed="false" aria-label="Pause the demo"><svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg><span data-pause-label>Pause</span></button></div>
+<div class="app app-agents" data-demo="agents" role="region" aria-label="A demo of agent tabs">
+<div class="app-titlebar">
+<span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+<div class="agent-tabs" data-tabs></div>
+</div>
+<form class="task-form" data-task-form>
+<label for="demo-task">New Agent Task</label>
+<div class="task-row">
+<input id="demo-task" data-task-input placeholder="Describe a task…" maxlength="60" autocomplete="off">
+<button class="button" type="submit">Start</button>
+</div>
+<div class="task-ideas" data-task-ideas>
+<button type="button" class="chip">Match search regardless of accents</button>
+<button type="button" class="chip">Export notes as Markdown</button>
+<button type="button" class="chip">Add keyboard shortcuts</button>
+</div>
+</form>
+<div class="terminal terminal-agents" data-agent-terminal></div>
+<div class="toasts" data-toasts></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Files: the editor, with tabs and Ctrl+click -->
+<section class="section" id="files">
+<div class="wrap split split-flip">
+<div class="copy reveal">
+<p class="eyebrow">Files</p>
+<h2>Make the small fixes yourself.</h2>
+<p>Browse the working copy and edit any file in place, for the touch-ups between your agent's changes. It's not an IDE, on purpose: no plugins to manage and nothing to configure.</p>
+<ul class="ticks">
+<li>Files open in tabs you can pin and drag, kept for each repository as you left them.</li>
+<li>Ctrl+click (⌘-click) an import or a name to go to its definition, in JavaScript, TypeScript, Vue, Rust, Python, Go, PHP and Ruby, or an environment variable to its line in <code>.env</code>.</li>
+<li>Syntax highlighting, with each changed line marked since the last commit; click a mark to see or revert what was there.</li>
+<li>Find any file by name, including new ones Git doesn't track yet.</li>
+<li>Preview Markdown as it reads on GitHub, with tables, task lists and your repository's images.</li>
+<li>Saving keeps line endings and permissions, and won't overwrite a file changed on disk since you opened it.</li>
+</ul>
+</div>
+<div class="demo-column reveal">
+<div class="watch-bar"><p class="watch-caption" data-caption>Hold <kbd data-mod-key>Ctrl</kbd>, and the names that go somewhere are underlined.</p><button class="pause-button" type="button" data-pause aria-pressed="false" aria-label="Pause the demo"><svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg><span data-pause-label>Pause</span></button></div>
+<div class="app app-editor" data-demo="editor" role="region" aria-label="A demo of the Files view's editor">
+<div class="app-titlebar">
+<span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+<button class="tool-button tool-icon" type="button" data-back aria-label="Back" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+<button class="tool-button tool-icon" type="button" data-forward aria-label="Forward" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+<span class="titlebar-title">lantern · Files</span>
+<button class="tool-button hold-button" type="button" data-hold aria-pressed="false">Hold <kbd data-mod-key>Ctrl</kbd></button>
+</div>
+<div class="editor-tabs" data-editor-tabs></div>
+<div class="editor-code" data-editor-code></div>
+<div class="editor-status" data-editor-status></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- History: drag a branch onto HEAD to merge or rebase -->
+<section class="section section-alt" id="history">
+<div class="wrap split">
+<div class="copy reveal">
+<p class="eyebrow">History</p>
+<h2>Merge, rebase and rewrite with a drag.</h2>
+<p>Every commit on a clear branch graph. Drag a branch onto HEAD to merge it, or hold <kbd>Alt</kbd> to rebase onto it. Drag commits to reorder them and squash several into one, without an editor full of <code>pick</code> lines.</p>
+<ul class="ticks">
+<li>Each commit leads with its message, then who wrote it, with its co-authors (Claude by its own icon), and a diff for every changed file.</li>
+<li>Search files and commits together, by message, author or hash.</li>
+<li>Browse any commit's file tree, see a file's history, and blame it line by line.</li>
+<li>Resolve conflicts one block at a time: take the current side, the incoming side or both, or decide for the whole file.</li>
+<li>Compare any two branches or tags, cherry-pick by dragging commits onto your branch, and revert and reset from a right-click.</li>
+<li>Create, rename, delete and publish branches — a new branch can go to the remote straight away.</li>
+<li>Busy history with dozens of branches? Mainline shows each merge as one commit, in a straight line.</li>
+</ul>
+</div>
+<div class="demo-column reveal">
+<div class="watch-bar"><p class="watch-caption" data-caption><b>word-count</b> and <b>main</b> have each moved on since they split.</p><button class="pause-button" type="button" data-pause aria-pressed="false" aria-label="Pause the demo"><svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg><span data-pause-label>Pause</span></button></div>
+<div class="app app-history" data-demo="history" role="region" aria-label="A demo of merging and rebasing by dragging">
+<div class="app-titlebar">
+<span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+<span class="titlebar-title">lantern · main</span>
+<div class="segmented" role="group" aria-label="What dropping a branch does">
+<button type="button" data-mode="merge" aria-pressed="true">Merge</button>
+<button type="button" data-mode="rebase" aria-pressed="false">Rebase</button>
+</div>
+<button class="tool-button" type="button" data-undo hidden>Undo</button>
+</div>
+<div class="history-body">
+<aside class="app-sidebar branch-list" aria-label="Branches">
+<p class="sidebar-heading">Branches</p>
+<span class="branch-chip is-head" data-drop-head>main<span class="ref-badge ref-head">HEAD</span></span>
+<button class="branch-chip is-draggable" type="button" data-drag-branch>word-count</button>
+</aside>
+<div class="graph" data-graph></div>
+</div>
+<p class="graph-status" data-graph-status></p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- GitHub: issues and pull requests -->
+<section class="section" id="github">
+<div class="wrap split split-flip">
+<div class="copy reveal">
+<p class="eyebrow">GitHub</p>
+<h2>Issues and pull requests, next to your code.</h2>
+<p>Sign in to GitHub, and the repository's issues and pull requests are right there in the sidebar. No browser tab to keep open.</p>
+<ul class="ticks">
+<li>Filter by label, assignee, reviewer or author, and search titles and descriptions.</li>
+<li>Read and write comments in Markdown, edit labels and assignees, and close or reopen.</li>
+<li>A pull request's Commits tab shows its commits and changes beside the conversation, with review comments to send to your agent.</li>
+<li>Create a pull request from a branch, see whether it can be merged, and merge it with a merge commit, a squash or a rebase.</li>
+</ul>
+</div>
+<div class="demo-column reveal">
+<div class="segmented segmented-floating" role="group" aria-label="GitHub screenshot">
+<button type="button" data-github="issues" aria-pressed="true">Issues</button>
+<button type="button" data-github="pull-requests" aria-pressed="false">Pull requests</button>
+</div>
+<figure class="shot-frame">
+<img id="github-shot" src="assets/issues.webp" alt="Recastle's Issues view for timmcleod/lantern: open issues with their labels and comment counts, filters for label, assignee and author, and the issue &quot;Sync notes between devices&quot; open with its labels, comments and a Markdown comment box" data-alt-issues="Recastle's Issues view for timmcleod/lantern: open issues with their labels and comment counts, filters for label, assignee and author, and the issue &quot;Sync notes between devices&quot; open with its labels, comments and a Markdown comment box" data-alt-pull-requests="Recastle's Pull Requests view for timmcleod/lantern: three open pull requests, and &quot;Match words in search regardless of accents&quot; open, with no conflicts with main and the Merge Pull Request menu offering a merge commit, squash and merge, or rebase and merge" width="1600" height="898" loading="lazy">
 </figure>
 </div>
 </div>
 </section>
 
-<section style="padding: 96px 24px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border)">
-<div style="max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">Why Recastle</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">When your agent writes the code, your job changes.</h2>
-<p style="margin: 0; font-size: 18px; line-height: 1.7; color: var(--text2)">You spend less time typing and more time steering, reading diffs and deciding what to commit. Most tools weren't built for that: the Git client, the editor and the terminal live in separate windows, and you glue them together yourself.</p>
-<p style="margin: 6px 0 0; padding-left: 20px; border-left: 3px solid var(--accent); font-size: clamp(20px, 2.2vw, 24px); line-height: 1.45; letter-spacing: -0.01em; font-weight: 600; color: var(--text)">Recastle isn't an IDE, and it's more than a Git client: it's a workbench for reviewing and shipping what your agent writes.</p>
-<p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--muted)">There's no autocomplete, debugger or plugin system. If your agent does most of the writing, you may not miss them.</p>
+<!-- The real app, in screenshots; each opens larger -->
+<section class="section section-alt" id="tour">
+<div class="wrap">
+<div class="section-head reveal">
+<p class="eyebrow">Screenshots</p>
+<h2>What Recastle looks like.</h2>
 </div>
+</div>
+<div class="gallery" data-gallery>
+<button class="gallery-item" type="button"><img class="only-light" src="assets/hero-light.webp" alt="Recastle in the light theme: the Working Copy with four changed files, the diff for NoteEditor.vue with Stage Chunk and Discard Chunk on each change, and Claude Code listing what to check before committing" width="1600" height="898" loading="lazy"><img class="only-dark" src="assets/hero-dark.webp" alt="Recastle in the dark theme: the Working Copy with four changed files, the diff for NoteEditor.vue with Stage Chunk and Discard Chunk on each change, and Claude Code listing what to check before committing" width="1600" height="898" loading="lazy"><span class="gallery-caption">Review with your agent beside you</span></button>
+<button class="gallery-item" type="button"><img src="assets/working-copy.webp" alt="Recastle's Working Copy with four changed files. The diff for src/components/NoteEditor.vue shows unstaged chunks with Discard Chunk and Stage Chunk buttons, and a staged chunk with Unstage Chunk below" width="1600" height="898" loading="lazy"><span class="gallery-caption">Stage chunks and lines</span></button>
+<button class="gallery-item" type="button"><img src="assets/claude-code.webp" alt="Recastle's Working Copy with the diff for the new file src/lib/words.js, and below it the terminal panel with a Claude Code tab and a second terminal tab running npm run dev, showing Vite ready on localhost" width="1600" height="898" loading="lazy"><span class="gallery-caption">Agent and shell tabs</span></button>
+<button class="gallery-item" type="button"><img src="assets/windows.webp" alt="A Recastle window with tabs for three repositories, lantern, lantern-main and lantern-word-count, the last showing its agent working. It's open on lantern-word-count's history, where Claude Code is reviewing the last commit in the terminal panel below" width="1600" height="898" loading="lazy"><span class="gallery-caption">A tab for each worktree</span></button>
+<button class="gallery-item" type="button"><img src="assets/files.webp" alt="Recastle's Files view: the lantern repository's folders and files with colorful icons and change markers, and src/App.vue open in the editor with syntax highlighting, a changed-line mark, and a status bar showing the line, column, indentation and language" width="1600" height="898" loading="lazy"><span class="gallery-caption">The Files view</span></button>
+<button class="gallery-item" type="button"><img src="assets/history-search.webp" alt="Recastle's history for main with its branch graph grouped by month, and the toolbar search for &quot;note&quot; open, listing matching files and commits with their authors and dates" width="1600" height="898" loading="lazy"><span class="gallery-caption">History and search</span></button>
+<button class="gallery-item" type="button"><img src="assets/pull-requests.webp" alt="Recastle's Pull Requests view for timmcleod/lantern: three open pull requests, and &quot;Match words in search regardless of accents&quot; open, with no conflicts with main and the Merge Pull Request menu offering a merge commit, squash and merge, or rebase and merge" width="1600" height="898" loading="lazy"><span class="gallery-caption">Pull requests</span></button>
+</div>
+<div class="wrap gallery-controls">
+<button class="icon-button" type="button" data-gallery-prev aria-label="Previous screenshots"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+<button class="icon-button" type="button" data-gallery-next aria-label="Next screenshots"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+</div>
+<dialog class="lightbox" data-lightbox aria-label="Screenshot">
+<button class="icon-button lightbox-close" type="button" data-lightbox-close aria-label="Close"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+<img data-lightbox-image alt="">
+<p class="lightbox-caption" data-lightbox-caption></p>
+</dialog>
 </section>
 
-<section id="features" style="padding: 96px 24px; background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border)">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">Agents</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Your agent, right beside your repository.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">Recastle works with <strong style="font-weight: 600; color: var(--text)">Claude Code</strong>, <strong style="font-weight: 600; color: var(--text)">Codex</strong>, <strong style="font-weight: 600; color: var(--text)">Gemini CLI</strong> and other agents that run in a terminal. Open an agent tab and it starts in the repository you're looking at. As it works, its changes appear in the Working Copy, ready to review.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Set the command each repository's agent tab runs, such as Claude Code without permission prompts.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Know when your agent is done. Claude Code's tab shows when it's working, finished or waiting on you, and Recastle lets you know if you're looking elsewhere.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Drop a screenshot or any file on the terminal, and its path goes into your agent's prompt.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>The terminal opens on your agent. Add a shell tab for your test runner or dev server, which keeps running while you look at another repository.</span></li>
+<!-- Under the hood: real Git, and what Recastle contacts -->
+<section class="section" id="git">
+<div class="wrap split">
+<div class="copy reveal">
+<p class="eyebrow">Under the hood</p>
+<h2>Real Git underneath.</h2>
+<p>Recastle runs your own <code>git</code> for every change. Nothing is reimplemented, so nothing behaves differently.</p>
+<ul class="ticks">
+<li>Your hooks and commit signing run on every commit.</li>
+<li>Your SSH agent and credential helpers handle remotes.</li>
+<li>Your <code>.gitconfig</code> applies, exactly as it does in the terminal.</li>
 </ul>
-</div>
-<figure style="margin: 0; flex: 1 1 520px; min-width: 0; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 24px 60px rgba(19,26,38,0.14), 0 0 0 1px rgba(19,26,38,0.08)">
-<img src="assets/claude-code.webp" alt="Recastle's Working Copy with the diff for the new file src/lib/words.js, and below it the terminal panel with a Claude Code tab and a second terminal tab running npm run dev, showing Vite ready on localhost" width="1600" height="898" loading="lazy" style="display: block; width: 100%; height: auto">
-</figure>
-</div>
-</section>
-
-<section style="padding: 96px 24px">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 64px">
-<figure style="margin: 0; flex: 1 1 520px; min-width: 0; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 24px 60px rgba(19,26,38,0.14), 0 0 0 1px rgba(19,26,38,0.08)">
-<img src="assets/working-copy.webp" alt="Recastle's Working Copy with four changed files and an empty commit message. The diff for src/components/NoteEditor.vue shows unstaged chunks with Discard Chunk and Stage Chunk buttons, and a staged chunk with Unstage Chunk below" width="1600" height="898" loading="lazy" style="display: block; width: 100%; height: auto">
-</figure>
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">Review</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Review every line before it's committed.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">See exactly what changed, then stage, unstage or discard whole files, single chunks or individual lines. Keep what your agent got right, and turn a busy session into clean, focused commits.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Discarding a whole file moves it to the Trash, not into the void.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Write the message, commit, or amend the last commit in place.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Changed your mind? Undo a commit, discard, merge, rebase or reset, and get back exactly what it changed.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Stash everything or just selected files, then apply or drop them from the Stashes view.</span></li>
-</ul>
+<div class="privacy">
+<p><strong>No telemetry.</strong> Recastle itself only contacts GitHub: for updates, profile pictures, and your issues and pull requests. Git talks to your remotes, as it always does.</p>
+<p><strong>Your GitHub token,</strong> if you sign in, is kept in your system's keychain.</p>
 </div>
 </div>
-</section>
-
-<section aria-label="Download" style="padding: 40px 24px; background: color-mix(in srgb, var(--accent) 7%, var(--bg)); border-top: 1px solid var(--border)">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px 28px; text-align: center">
-<p style="margin: 0; font-size: clamp(20px, 2.2vw, 24px); font-weight: 600; letter-spacing: -0.01em">See what your agent changed before it's committed.</p>
-<div data-cta style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px">
-<a href="#download" data-cta-main style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 24px; border-radius: 10px; background: var(--btn); color: var(--btn-text); text-decoration: none; font-size: 17px; font-weight: 600; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span data-cta-label>Download</span></a>
-<a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" data-cta-alt hidden style="font-size: 15px; color: var(--link); text-decoration: none">or AppImage</a>
-</div>
-</div>
-</section>
-
-<section style="padding: 96px 24px; background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border)">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">Files</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Make the small fixes yourself.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">Browse the working copy and edit any file in place, for the touch-ups between your agent's changes. It's not an IDE, on purpose: no plugins to manage and nothing to configure.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Syntax highlighting, with each changed line marked since the last commit; click a mark to see or revert what was there.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Find any file by name, including new ones Git doesn't track yet.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Preview Markdown as it reads on GitHub, with tables, task lists and your repository's images.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Saving keeps line endings and permissions, and won't overwrite a file changed on disk since you opened it.</span></li>
-</ul>
-</div>
-<figure style="margin: 0; flex: 1 1 520px; min-width: 0; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 24px 60px rgba(19,26,38,0.14), 0 0 0 1px rgba(19,26,38,0.08)">
-<img src="assets/files.webp" alt="Recastle's Files view: the lantern repository's folders and files with colorful icons and change markers, and src/App.vue open in the editor with syntax highlighting, a changed-line mark, and a status bar showing the line, column, indentation and language" width="1600" height="898" loading="lazy" style="display: block; width: 100%; height: auto">
-</figure>
-</div>
-</section>
-
-<section style="padding: 96px 24px">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 64px">
-<figure style="margin: 0; flex: 1 1 520px; min-width: 0; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 24px 60px rgba(19,26,38,0.14), 0 0 0 1px rgba(19,26,38,0.08)">
-<img src="assets/windows.webp" alt="A Recastle window with tabs for three repositories, lantern, lantern-main and lantern-word-count, the last showing its agent working. It's open on lantern-word-count's history, where Claude Code is reviewing the last commit in the terminal panel below" width="1600" height="898" loading="lazy" style="display: block; width: 100%; height: auto">
-</figure>
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">Tabs</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Several agents at once.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">Describe a task, and <strong style="font-weight: 600; color: var(--text)">New Agent Task</strong> makes a branch for it in a worktree of its own and opens it in a new tab, with your agent already working on it. Start several, and they work side by side without getting in each other's way.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Each tab shows whether its agent is working, finished or waiting on you, and how many files it has changed. Worktrees shows every worktree's agent at a glance; click one to go to it.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Open any repository in a tab of its own with <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg)">Ctrl+T</kbd> (<kbd style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg)">⌘T</kbd> on a Mac), or in a new window, each with its own agent and terminals. Drag tabs to reorder them.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Closing a tab or window, or quitting, with work in progress, a busy terminal or an unsaved file, asks first and says what's at stake.</span></li>
-</ul>
-</div>
-</div>
-</section>
-
-<section style="padding: 96px 24px; background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border)">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">History</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">See your whole history.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">Every commit on a clear branch graph, grouped by month. View HEAD or any branch, remote branch, tag or stash.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Each commit leads with its message, then who wrote it, with its co-authors (Claude by its own icon), and a diff for every changed file.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Search files and commits together, by message, author or hash.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Browse any commit's file tree, see a file's history, and blame it line by line.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Busy history with dozens of branches? Mainline shows each merge as one commit, in a straight line.</span></li>
-</ul>
-</div>
-<figure style="margin: 0; flex: 1 1 520px; min-width: 0; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 24px 60px rgba(19,26,38,0.14), 0 0 0 1px rgba(19,26,38,0.08)">
-<img src="assets/history-search.webp" alt="Recastle's history for main with its branch graph grouped by month, and the toolbar search for &quot;note&quot; open, listing matching files and commits with their authors and dates" width="1600" height="898" loading="lazy" style="display: block; width: 100%; height: auto">
-</figure>
-</div>
-</section>
-
-<section style="padding: 96px 24px">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">Branches</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Merge, rebase and rewrite with a drag.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">Drag a branch onto HEAD to merge it, or hold Alt to rebase onto it. Drag commits to reorder them and squash several into one, without an editor full of <code style="font-family: 'JetBrains Mono', monospace; font-size: 15px">pick</code> lines.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Resolve conflicts one block at a time: take the current side, the incoming side or both, or decide for the whole file.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Compare any two branches or tags: see the commits one has that the other doesn't, and every change it would bring.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Drag commits from another branch onto yours to cherry-pick them, and revert and reset from a right-click.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Create, rename, delete and publish branches — a new branch can go to the remote straight away.</span></li>
-</ul>
-</div>
-<div style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column">
-<figure style="margin: 0; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 24px 60px rgba(19,26,38,0.14), 0 0 0 1px rgba(19,26,38,0.08)">
-<img src="assets/conflict.webp" alt="A merge conflict in src/lib/storage.js. Conflict 1 shows the current side in blue and the incoming side in yellow, with Current, Incoming and Both buttons, above Use Current, Use Incoming, Open in Editor and Mark as Resolved for the whole file" width="1300" height="812" loading="lazy" style="display: block; width: 100%; height: auto">
-</figure>
-</div>
-</div>
-</section>
-
-<section id="github" style="padding: 96px 24px; background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border)">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 64px">
-<div style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 20px">
-<div role="group" aria-label="GitHub screenshot" style="display: inline-flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border)">
-<button type="button" class="pl-seg" data-github="issues" aria-pressed="true" style="min-height: 36px; padding: 0 16px; border: 0; border-radius: 7px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;">Issues</button>
-<button type="button" class="pl-seg" data-github="pull-requests" aria-pressed="false" style="min-height: 36px; padding: 0 16px; border: 0; border-radius: 7px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;">Pull requests</button>
-</div>
-<figure style="margin: 0; width: 100%; border-radius: 12px; overflow: hidden; line-height: 0; box-shadow: 0 24px 60px rgba(19,26,38,0.14), 0 0 0 1px rgba(19,26,38,0.08)">
-<img id="github-shot" src="assets/issues.webp" alt="Recastle's Issues view for timmcleod/lantern: open issues with their labels and comment counts, filters for label, assignee and author, and the issue &quot;Sync notes between devices&quot; open with its labels, comments and a Markdown comment box" data-alt-issues="Recastle's Issues view for timmcleod/lantern: open issues with their labels and comment counts, filters for label, assignee and author, and the issue &quot;Sync notes between devices&quot; open with its labels, comments and a Markdown comment box" data-alt-pull-requests="Recastle's Pull Requests view for timmcleod/lantern: three open pull requests, and &quot;Match words in search regardless of accents&quot; open, with no conflicts with main and the Merge Pull Request menu offering a merge commit, squash and merge, or rebase and merge" width="1600" height="898" loading="lazy" style="display: block; width: 100%; height: auto">
-</figure>
-</div>
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">GitHub</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Issues and pull requests, next to your code.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">Sign in to GitHub, and the repository's issues and pull requests are right there in the sidebar. No browser tab to keep open.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Filter by label, assignee, reviewer or author, and search titles and descriptions.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Read and write comments in Markdown, edit labels and assignees, and close or reopen.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Create a pull request from a branch, see whether it can be merged, and merge it with a merge commit, a squash or a rebase.</span></li>
-</ul>
-</div>
-</div>
-</section>
-
-<section style="padding: 96px 24px">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
-<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">Under the hood</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Real Git underneath.</h2>
-<p style="margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2)">Recastle runs your own <code style="font-family: 'JetBrains Mono', monospace; font-size: 15px">git</code> for every change. Nothing is reimplemented, so nothing behaves differently.</p>
-<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px">
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Your hooks and commit signing run on every commit.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Your SSH agent and credential helpers handle remotes.</span></li>
-<li style="display: flex; gap: 12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M20 6 9 17l-5-5"></path></svg><span>Your <code style="font-family: 'JetBrains Mono', monospace; font-size: 14px">.gitconfig</code> applies, exactly as it does in the terminal.</span></li>
-</ul>
-<div style="display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 15px; line-height: 1.6; color: var(--text2)">
-<p style="margin: 0"><strong style="font-weight: 600; color: var(--text)">No telemetry.</strong> Recastle itself only contacts GitHub: for updates, profile pictures, and your issues and pull requests. Git talks to your remotes, as it always does.</p>
-<p style="margin: 0"><strong style="font-weight: 600; color: var(--text)">Your GitHub token,</strong> if you sign in, is kept in your system's keychain.</p>
-</div>
-</div>
-<figure role="img" aria-label="A terminal showing a commit made from Recastle running the pre-commit hook and signing the commit" style="margin: 0; flex: 1 1 520px; min-width: 0; border-radius: 12px; overflow: hidden; background: var(--term); border: 1px solid var(--term-border); box-shadow: 0 24px 60px rgba(19,26,38,0.16)">
-<div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid #263044">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#98a3b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-<span style="font-size: 12px; color: #b1bccd">Your setup, as it is in the terminal</span>
-</div>
-<pre style="margin: 0; padding: 22px 22px 26px; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.8; color: #e8edf5; overflow-x: auto"><span style="color: #98a3b5">$</span> git commit -F -
-<span style="color: #98a3b5">pre-commit</span>  running lint… <span style="color: #58a6ff">ok</span>
-<span style="color: #98a3b5">gpg</span>         signing with your key… <span style="color: #58a6ff">ok</span>
+<figure class="terminal-card reveal" role="img" aria-label="A terminal showing a commit made from Recastle running the pre-commit hook and signing the commit, then a push using your SSH key">
+<div class="terminal-card-head"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg>Your setup, as it is in the terminal</div>
+<pre data-typeout><span class="t-dim">$</span> git commit -F -
+<span class="t-dim">pre-commit</span>  running lint… <span class="t-ok">ok</span>
+<span class="t-dim">gpg</span>         signing with your key… <span class="t-ok">ok</span>
 [main 4e1c2a7] Show blame beside the file view
  2 files changed, 41 insertions(+), 6 deletions(-)
 
-<span style="color: #98a3b5">$</span> git push
-<span style="color: #98a3b5">ssh-agent</span>   using your key
+<span class="t-dim">$</span> git push
+<span class="t-dim">ssh-agent</span>   using your key
 To github.com:you/your-project.git
    a41c9e2..4e1c2a7  main -&gt; main</pre>
 </figure>
 </div>
 </section>
 
-
-
-<section style="padding: 96px 24px; background: var(--bg-alt); border-top: 1px solid var(--border)">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px">
-<div style="display: flex; flex-direction: column; gap: 14px; max-width: 640px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">And more</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Everything else, done carefully.</h2>
+<!-- And more: the smaller features -->
+<section class="section section-alt">
+<div class="wrap">
+<div class="section-head reveal">
+<p class="eyebrow">And more</p>
+<h2>Everything else, done carefully.</h2>
 </div>
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px">
-
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Fast and small</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">A native Rust core, not Electron. Large histories load quickly and page in as you scroll.</p>
+<div class="feature-grid">
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg><h3>Fast and small</h3><p>A native Rust core, not Electron. Large histories load quickly and page in as you scroll.</p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"/></svg><h3>Live refresh</h3><p>Changes your agent makes, or you make anywhere else, show up immediately.</p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg><h3>Light and dark themes</h3><p>A clean light theme and a blue-gray dark theme. Diffs have a colorblind-friendly option. <button class="inline-button" type="button" data-theme-toggle>Try it on this page.</button></p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg><h3>Keyboard friendly</h3><p>Arrow keys move through files and commits; Back and Forward retrace your steps.</p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"/></svg><h3>Nothing lost</h3><p>Commits a branch loses, as to an agent's <code>git reset --hard</code>, are offered back in a click.</p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg><h3>Fetch, pull and push</h3><p>One click each, with live progress and Cancel. Pull with merge or rebase; force push when you need it.</p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></svg><h3>Tags and remotes</h3><p>Create, push and delete tags. Add, rename and remove remotes. Delete remote branches.</p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg><h3>GitHub account</h3><p>Sign in to browse and clone your repositories, create new ones and manage SSH keys. Shows authors' profile pictures.</p></div>
+<div class="feature spotlight reveal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><h3>Automatic updates</h3><p>Recastle checks GitHub for new releases, installs them, and reopens your windows as they were.</p></div>
 </div>
-
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Live refresh</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">Changes your agent makes, or you make anywhere else, show up immediately.</p>
 </div>
+</section>
 
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 18a6 6 0 0 0 0-12v12z"></path></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Light and dark themes</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">A clean light theme and a blue-gray dark theme. Diffs have a colorblind-friendly option.</p>
+<!-- Download: the gate, and a card for each platform -->
+<section id="download" class="download">
+<div class="download-sky" aria-hidden="true"></div>
+<div class="wrap">
+<div class="download-head">
+<h2>Get Recastle</h2>
+<p>Free, open source, and MIT licensed. Version 0.50.0.</p>
+<p class="note" data-windows-note hidden>Recastle is for macOS and Linux. There's no Windows version yet.</p>
 </div>
+<div class="download-cards" data-cards>
 
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8h.01"></path><path d="M10 8h.01"></path><path d="M14 8h.01"></path><path d="M18 8h.01"></path><path d="M8 12h.01"></path><path d="M12 12h.01"></path><path d="M16 12h.01"></path><path d="M7 16h10"></path></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Keyboard friendly</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">Arrow keys move through files and commits; Back and Forward retrace your steps.</p>
-</div>
-
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"></path></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Nothing lost</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">Commits a branch loses, as to an agent's <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px">git reset --hard</code>, are offered back in a click.</p>
-</div>
-
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 16-4 4-4-4"></path><path d="M17 20V4"></path><path d="m3 8 4-4 4 4"></path><path d="M7 4v16"></path></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Fetch, pull and push</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">One click each, with live progress and Cancel. Pull with merge or rebase; force push when you need it.</p>
+<div class="download-card" id="download-mac" data-os="mac">
+<div class="card-title"><span class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2zM20.054 15.987H3.946"/></svg></span><div><h3>macOS</h3><p>macOS 11+, Apple silicon and Intel</p></div></div>
+<p>Open the <code>.dmg</code> and drag Recastle to Applications.</p>
+<p>Needs Git 2.29 or newer.</p>
+<a class="button card-button" href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_universal.dmg" data-asset="dmg">Download .dmg</a>
 </div>
 
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Tags and remotes</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">Create, push and delete tags. Add, rename and remove remotes. Delete remote branches.</p>
+<div class="download-card" data-os="deb">
+<div class="card-title"><span class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73zM12 22V12M3.3 7l7.703 4.734a2 2 0 0 0 1.994 0L20.7 7M7.5 4.27l9 5.15"/></svg></span><div><h3>Ubuntu, Debian, Mint, Pop!_OS, elementary</h3><p>.deb package</p></div></div>
+<pre class="command"><span class="t-dim">$</span> sudo apt install ./Recastle_*.deb</pre>
+<p>Needs Git 2.29 or newer, and installs Git for you if it's missing.</p>
+<a class="button card-button" href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.deb" data-asset="deb">Download .deb</a>
 </div>
 
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">GitHub account</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">Sign in to browse and clone your repositories, create new ones and manage SSH keys. Shows authors' profile pictures.</p>
-</div>
-
-<div style="padding: 24px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-<h3 style="margin: 0; font-size: 17px; font-weight: 600">Automatic updates</h3>
-<p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--text2)">Recastle checks GitHub for new releases, installs them, and reopens your windows as they were.</p>
+<div class="download-card" data-os="appimage">
+<div class="card-title"><span class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg></span><div><h3>Any other Linux</h3><p>AppImage</p></div></div>
+<pre class="command"><span class="t-dim">$</span> chmod +x Recastle_*.AppImage
+<span class="t-dim">$</span> ./Recastle_*.AppImage</pre>
+<details><summary>Requirements</summary><p>Git 2.29 or newer, plus <code>libfuse2</code> on Ubuntu 22.04 and later (<code>libfuse2t64</code> on 24.04 and later).</p></details>
+<a class="button card-button" href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" data-asset="appimage">Download AppImage</a>
 </div>
 
 </div>
 </div>
 </section>
 
-<section id="download" style="position: relative; isolation: isolate; padding: 96px 24px 112px; border-top: 1px solid var(--border); overflow-x: hidden; overflow-x: clip">
-<div aria-hidden="true" style="position: absolute; z-index: -1; top: 0; left: 0; right: 0; height: min(1150px, 62vw + 380px); background: url(assets/gate-2400.webp) center 62% / cover no-repeat; background-image: image-set(url(assets/gate-1200.webp) 1x, url(assets/gate-2400.webp) 2x); -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%)"></div>
-<div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px">
-<div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px">
-<h2 style="margin: 0; font-size: clamp(32px, 4vw, 48px); line-height: 1.08; letter-spacing: -0.025em; font-weight: 600; color: #fff; text-shadow: 0 2px 18px rgba(6, 12, 30, 0.55)">Get Recastle</h2>
-<p style="margin: 0; max-width: 560px; font-size: 18px; line-height: 1.6; color: rgba(255, 255, 255, 0.92); text-shadow: 0 1px 12px rgba(6, 12, 30, 0.6)">Free, open source, and MIT licensed. Version 0.50.0.</p>
-<p data-windows-note hidden style="margin: 0; max-width: 560px; font-size: 16px; line-height: 1.6; color: #fff; font-weight: 600; text-shadow: 0 1px 12px rgba(6, 12, 30, 0.6)">Recastle is for macOS and Linux. There's no Windows version yet.</p>
+<!-- First use -->
+<section class="section" id="first-use">
+<div class="wrap">
+<div class="section-head reveal">
+<p class="eyebrow">First use</p>
+<h2>Reviewing your agent's work</h2>
 </div>
-<div aria-hidden="true" style="height: min(600px, 38vw + 70px)"></div>
-<div data-cards style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px">
-
-<div id="download-mac" data-os="mac" style="padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column; gap: 18px; scroll-margin-top: 72px">
-<div style="display: flex; align-items: flex-start; gap: 14px">
-<span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"></path><path d="M20.054 15.987H3.946"></path></svg></span>
-<div style="display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 19px; font-weight: 600">macOS</h3><p style="margin: 0; font-size: 15px; color: var(--text2)">macOS 11+, Apple silicon and Intel</p></div>
-</div>
-<p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--text2)">Open the <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px">.dmg</code> and drag Recastle to Applications.</p>
-<p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--text2)">Needs Git 2.29 or newer.</p>
-<a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_universal.dmg" data-asset="dmg" style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 20px; border-radius: 10px; background: var(--btn); color: var(--btn-text); text-decoration: none; font-size: 16px; font-weight: 600; box-sizing: border-box; margin-top: auto">Download .dmg</a>
-</div>
-
-<div data-os="deb" style="padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column; gap: 18px">
-<div style="display: flex; align-items: flex-start; gap: 14px">
-<span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path><path d="M12 22V12"></path><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path><path d="m7.5 4.27 9 5.15"></path></svg></span>
-<div style="display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 19px; font-weight: 600">Ubuntu, Debian, Mint, Pop!_OS, elementary</h3><p style="margin: 0; font-size: 15px; color: var(--text2)">.deb package</p></div>
-</div>
-<pre style="margin: 0; padding: 16px 18px; border-radius: 10px; background: var(--term); border: 1px solid var(--term-border); color: #e8edf5; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere"><span style="color: #98a3b5">$</span> sudo apt install ./Recastle_*.deb</pre>
-<p style="margin: 0; font-size: 14px; color: var(--text2)">Needs Git 2.29 or newer, and installs Git for you if it's missing.</p>
-<a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.deb" data-asset="deb" style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 20px; border-radius: 10px; background: var(--btn); color: var(--btn-text); text-decoration: none; font-size: 16px; font-weight: 600; box-sizing: border-box; margin-top: auto">Download .deb</a>
-</div>
-
-<div data-os="appimage" style="padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column; gap: 18px">
-<div style="display: flex; align-items: flex-start; gap: 14px">
-<span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg></span>
-<div style="display: flex; flex-direction: column; gap: 2px"><h3 style="margin: 0; font-size: 19px; font-weight: 600">Any other Linux</h3><p style="margin: 0; font-size: 15px; color: var(--text2)">AppImage</p></div>
-</div>
-<pre style="margin: 0; padding: 16px 18px; border-radius: 10px; background: var(--term); border: 1px solid var(--term-border); color: #e8edf5; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere"><span style="color: #98a3b5">$</span> chmod +x Recastle_*.AppImage
-<span style="color: #98a3b5">$</span> ./Recastle_*.AppImage</pre>
-<details style="font-size: 14px; line-height: 1.55; color: var(--text2)"><summary style="cursor: pointer">Requirements</summary><p style="margin: 6px 0 0">Git 2.29 or newer, plus <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px">libfuse2</code> on Ubuntu 22.04 and later (<code style="font-family: 'JetBrains Mono', monospace; font-size: 13px">libfuse2t64</code> on 24.04 and later).</p></details>
-<a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" data-asset="appimage" style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 20px; border-radius: 10px; background: var(--btn); color: var(--btn-text); text-decoration: none; font-size: 16px; font-weight: 600; box-sizing: border-box; margin-top: auto">Download AppImage</a>
-</div>
-
-</div>
-</div>
-</section>
-
-<section id="first-use" style="padding: 96px 24px; border-top: 1px solid var(--border)">
-<div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px">
-<div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px">
-<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--link)">First use</p>
-<h2 style="margin: 0; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 600">Reviewing your agent's work</h2>
-</div>
-<ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 20px">
-<li style="display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg)"><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 50%; background: var(--surface); color: var(--link); display: flex; align-items: center; justify-content: center; font-weight: 600">1</span><h3 style="margin: 0; font-size: 18px; font-weight: 600">Open a repository.</h3><p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--text2)">Open any folder that's a Git repository, or clone one of yours from GitHub.</p></li>
-<li style="display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg)"><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 50%; background: var(--surface); color: var(--link); display: flex; align-items: center; justify-content: center; font-weight: 600">2</span><h3 style="margin: 0; font-size: 18px; font-weight: 600">Start your agent.</h3><p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--text2)">Open the terminal and Claude Code starts in that repository, or Codex, Gemini or another agent you choose. If it isn't installed, Recastle offers its installer.</p></li>
-<li style="display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg)"><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 50%; background: var(--surface); color: var(--link); display: flex; align-items: center; justify-content: center; font-weight: 600">3</span><h3 style="margin: 0; font-size: 18px; font-weight: 600">Review and commit.</h3><p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--text2)">Changes appear in the Working Copy as your agent works. Stage what's right, discard what isn't, and commit.</p></li>
+<ol class="first-steps">
+<li class="reveal"><span class="first-step-number" aria-hidden="true">1</span><h3>Open a repository.</h3><p>Open any folder that's a Git repository, or clone one of yours from GitHub.</p></li>
+<li class="reveal"><span class="first-step-number" aria-hidden="true">2</span><h3>Start your agent.</h3><p>Open the terminal and Claude Code starts in that repository, or Codex, Gemini or another agent you choose. If it isn't installed, Recastle offers its installer.</p></li>
+<li class="reveal"><span class="first-step-number" aria-hidden="true">3</span><h3>Review and commit.</h3><p>Changes appear in the Working Copy as your agent works. Stage what's right, discard what isn't, and commit.</p></li>
 </ol>
 </div>
 </section>
 
-<section style="padding: 96px 24px; background: var(--bg-alt); border-top: 1px solid var(--border)">
-<div style="max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px">
-<h2 style="margin: 0; font-size: clamp(32px, 4vw, 48px); line-height: 1.08; letter-spacing: -0.025em; font-weight: 600"><span class="pl-sentence">Run your agent.</span> <span class="pl-sentence">Review its work.</span> <span class="pl-sentence">Ship it.</span></h2>
-<div data-cta style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px">
-<a href="#download" data-cta-main style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 24px; border-radius: 10px; background: var(--btn); color: var(--btn-text); text-decoration: none; font-size: 17px; font-weight: 600; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span data-cta-label>Download</span></a>
-<a href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" data-cta-alt hidden style="font-size: 15px; color: var(--link); text-decoration: none">or AppImage</a>
+<section class="section closing">
+<div class="wrap closing-inner">
+<h2><span class="headline-step">Run your agent.</span> <span class="headline-step">Review its work.</span> <span class="headline-step">Ship it.</span></h2>
+<div class="cta" data-cta>
+<a class="button button-large" href="#download" data-cta-main><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span data-cta-label>Download</span></a>
+<a class="cta-alt" href="https://github.com/timmcleod/recastle/releases/download/v0.50.0/Recastle_0.50.0_amd64.AppImage" data-cta-alt hidden>or AppImage</a>
 </div>
-<p style="margin: 0; font-size: 15px; color: var(--text2)">Already using Recastle? <a href="https://github.com/timmcleod/recastle" style="color: var(--link); text-decoration: none">A star on GitHub</a> helps other developers find it.</p>
+<p class="fine-print">Already using Recastle? <a href="https://github.com/timmcleod/recastle">A star on GitHub</a> helps other developers find it.</p>
 </div>
 </section>
 
-<footer style="padding: 40px 24px; border-top: 1px solid var(--border); background: var(--bg-alt)">
-<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; font-size: 14px; color: var(--text2)">
-<span style="display: flex; align-items: center; gap: 10px">
-<svg width="24" height="24" viewBox="0 0 1024 1024" aria-hidden="true"><defs><clipPath id="pi2-tile"><rect x="134" y="35" width="806" height="806" rx="183"/></clipPath><linearGradient id="pi2-sky" x1="0" y1="35" x2="0" y2="631" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2a4775"/><stop offset="0.4" stop-color="#1e3459"/><stop offset="1" stop-color="#132641"/></linearGradient><radialGradient id="pi2-vignette" cx="537" cy="380" r="520" gradientUnits="userSpaceOnUse"><stop offset="0.55" stop-color="#0b1628" stop-opacity="0"/><stop offset="1" stop-color="#0b1628" stop-opacity="0.55"/></radialGradient><linearGradient id="pi2-ground" x1="0" y1="631" x2="0" y2="841" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0f2441"/><stop offset="1" stop-color="#0c1c35"/></linearGradient><linearGradient id="pi2-arch" x1="0" y1="377" x2="0" y2="571" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0d1e37"/><stop offset="1" stop-color="#07162b"/></linearGradient><linearGradient id="pi2-road" x1="0" y1="524" x2="0" y2="841" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5aa8f3"/><stop offset="0.45" stop-color="#62b0f8"/><stop offset="1" stop-color="#56a3f2"/></linearGradient><linearGradient id="pi2-turretL" x1="0" y1="340" x2="0" y2="631" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ecf2fa"/><stop offset="0.35" stop-color="#e2ecf8"/><stop offset="1" stop-color="#8bbdf7"/></linearGradient><linearGradient id="pi2-turretR" x1="0" y1="340" x2="0" y2="631" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0f6fd"/><stop offset="0.35" stop-color="#e8f2fc"/><stop offset="1" stop-color="#98c6f9"/></linearGradient><linearGradient id="pi2-wallL" x1="300" y1="390" x2="392" y2="600" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d8e5f6"/><stop offset="0.55" stop-color="#bcd2f0"/><stop offset="1" stop-color="#4f88da"/></linearGradient><linearGradient id="pi2-wallR" x1="771" y1="390" x2="679" y2="600" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#dceafa"/><stop offset="0.55" stop-color="#c3dbf8"/><stop offset="1" stop-color="#67a3f3"/></linearGradient><linearGradient id="pi2-gateL" x1="0" y1="253" x2="0" y2="590" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e9ecf1"/><stop offset="0.55" stop-color="#e3eaf4"/><stop offset="1" stop-color="#94bff1"/></linearGradient><linearGradient id="pi2-gateR" x1="0" y1="253" x2="0" y2="590" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fcfcfd"/><stop offset="0.55" stop-color="#f3f7fc"/><stop offset="1" stop-color="#c6e0fa"/></linearGradient></defs><g transform="matrix(1.09181 0 0 1.09181 -74.30 33.79)"><g clip-path="url(#pi2-tile)"><rect x="134" y="35" width="806" height="806" fill="url(#pi2-sky)"/><rect x="134" y="631" width="806" height="210" fill="url(#pi2-ground)"/><rect x="134" y="35" width="806" height="806" fill="url(#pi2-vignette)"/><path d="M222 360 L301 339 L300 606 L184 631 Z" fill="url(#pi2-turretL)"/><path d="M301 399 L392 377 L385 588 L300 606 Z" fill="url(#pi2-wallL)"/><path d="M301 339 L309 345 L309 397 L301 399 Z" fill="#3f5a87"/><path d="M849 360 L770 339 L771 606 L887 631 Z" fill="url(#pi2-turretR)"/><path d="M770 399 L679 377 L686 588 L771 606 Z" fill="url(#pi2-wallR)"/><path d="M770 339 L762 345 L762 397 L770 399 Z" fill="#5f7dab"/><path d="M393.3 292.7 L454 278.3 L458.3 316 L500 304 L500.7 261.7 L535.5 252.7 L535.5 376.7 A67.5 67.5 0 0 0 468 444.2 L468 570 L385 588 Z" fill="url(#pi2-gateL)"/><path d="M677.7 292.7 L617 278.3 L612.7 316 L571 304 L570.3 261.7 L535.5 252.7 L535.5 376.7 A67.5 67.5 0 0 1 603 444.2 L603 570 L686 588 Z" fill="url(#pi2-gateR)"/><path d="M454 278.3 L466 284 L466 313 L458.3 316 Z" fill="#566c8d"/><path d="M617 278.3 L605 284 L605 313 L612.7 316 Z" fill="#6a82a8"/><path d="M468 571 L468 444.2 A67.5 67.5 0 0 1 603 444.2 L603 571 Z" fill="url(#pi2-arch)"/><path d="M504 524 L515 524 Q519 524 518.6 528 L511 640 L330 900 L60 900 L100 823 L177 777 L473 601 L500.4 528 Q501 524 504 524 Z" fill="url(#pi2-road)"/><path d="M567 524 L556 524 Q552 524 552.4 528 L560 640 L741 900 L1011 900 L971 823 L894 777 L598 601 L570.6 528 Q570 524 567 524 Z" fill="url(#pi2-road)"/></g><rect x="135.5" y="36.5" width="803" height="803" rx="181.5" fill="none" stroke="#4d77c2" stroke-opacity="0.8" stroke-width="4"/></g></svg>
-<span>Free and open source under the MIT license.</span>
-</span>
-<span style="display: flex; flex-wrap: wrap; gap: 24px">
-<a class="pl-navlink" href="https://github.com/timmcleod/recastle">GitHub</a>
-<a class="pl-navlink" href="https://github.com/timmcleod/recastle/releases">Releases</a>
-<a class="pl-navlink" href="https://github.com/timmcleod/recastle/blob/main/LICENSE">License</a>
+</main>
+
+<footer class="site-footer">
+<div class="wrap footer-row">
+<span class="footer-brand"><img src="favicon.svg" alt="" width="24" height="24">Free and open source under the MIT license.</span>
+<span class="footer-links">
+<a href="https://github.com/timmcleod/recastle">GitHub</a>
+<a href="https://github.com/timmcleod/recastle/releases">Releases</a>
+<a href="https://github.com/timmcleod/recastle/blob/main/LICENSE">License</a>
 </span>
 <span>Copyright © 2026 Tim McLeod</span>
 </div>
 </footer>
-
-</div>
-<script>
-(function () {
-  var images = document.querySelectorAll('.hero-shot');
-  var buttons = document.querySelectorAll('.pl-seg[data-shot]');
-  function show(shot) {
-    images.forEach(function (i) { i.style.display = i.dataset.shot === shot ? 'block' : 'none'; });
-    buttons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.shot === shot ? 'true' : 'false'); });
-  }
-  buttons.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.shot); }); });
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) show('dark');
-  // A hidden picture is downloaded but may not be decoded until it's shown, which can
-  // leave the frame blank for a moment on switching; decode both now.
-  images.forEach(function (i) { if (i.decode) i.decode().catch(function () {}); });
-})();
-</script>
-<script>
-// The pictures the GitHub toggle switches to, fetched and decoded once the page has
-// loaded, so switching shows them at once rather than after they download. Kept, so the
-// browser keeps them decoded.
-(function () {
-  var kept = [];
-  window.addEventListener('load', function () {
-    ['assets/issues.webp', 'assets/pull-requests.webp'].forEach(function (src) {
-      var picture = new Image();
-      picture.src = src;
-      if (picture.decode) picture.decode().catch(function () {});
-      kept.push(picture);
-    });
-  });
-})();
-</script>
-<script>
-// The GitHub section's Issues / Pull requests toggle.
-(function () {
-  var img = document.getElementById('github-shot');
-  var buttons = document.querySelectorAll('.pl-seg[data-github]');
-  buttons.forEach(function (b) {
-    b.addEventListener('click', function () {
-      img.src = 'assets/' + b.dataset.github + '.webp';
-      img.alt = img.getAttribute('data-alt-' + b.dataset.github);
-      buttons.forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
-    });
-  });
-})();
-</script>
-
-<script>
-// The download for the visitor's computer, where it can be told: macOS gets the .dmg,
-// Linux the .deb, with the AppImage beside it, as the distribution can't be told. Others,
-// and phones, are shown the downloads; on Windows, with a word that there's nothing for it yet. iPads say they're Macs; a touch screen gives them
-// away. Without this, each button reads "Download" and goes to the downloads.
-(function () {
-  var ua = navigator.userAgent || '';
-  var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
-  var os = /Android|iPhone|iPad|iPod/.test(ua) || (/Mac/i.test(platform) && navigator.maxTouchPoints > 1) ? 'mobile'
-    : /Mac/i.test(platform) ? 'mac'
-    : /Win/i.test(platform) ? 'windows'
-    : /Linux|X11/i.test(platform) && !/CrOS/.test(ua) ? 'linux'
-    : 'other';
-  var files = {};
-  document.querySelectorAll('#download [data-asset]').forEach(function (a) { files[a.getAttribute('data-asset')] = a.href; });
-  var main = os === 'mac' ? { label: 'Download for macOS', asset: 'dmg' }
-    : os === 'linux' ? { label: 'Download .deb', asset: 'deb' }
-    : { label: 'See downloads' };
-  document.querySelectorAll('[data-cta]').forEach(function (cta) {
-    var link = cta.querySelector('[data-cta-main]');
-    cta.querySelector('[data-cta-label]').textContent = main.label;
-    if (main.asset) {
-      link.href = files[main.asset];
-      link.setAttribute('data-asset', main.asset);
-    }
-    if (os === 'linux') cta.querySelector('[data-cta-alt]').hidden = false;
-  });
-  // Windows visitors are told there's nothing for them yet, rather than left to find out.
-  if (os === 'windows') document.querySelectorAll('[data-windows-note]').forEach(function (note) { note.hidden = false; });
-  // On Linux, its cards first; otherwise as written, macOS first.
-  if (os === 'linux') {
-    var order = { deb: 0, appimage: 1, mac: 2 };
-    document.querySelectorAll('[data-cards] > [data-os]').forEach(function (card) { card.style.order = order[card.getAttribute('data-os')]; });
-  }
-})();
-</script>
-<script>
-// The star count, once there are enough stars to be worth showing; until then, or if
-// GitHub can't be reached, the link just says the source is there.
-(function () {
-  fetch('https://api.github.com/repos/timmcleod/recastle')
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (repo) {
-      if (!repo || !(repo.stargazers_count >= 10)) return;
-      document.querySelectorAll('[data-stars-link]').forEach(function (el) {
-        el.textContent = '★ ' + repo.stargazers_count.toLocaleString('en-US') + ' on GitHub';
-      });
-    })
-    .catch(function () {});
-})();
-</script>
 </body>
 </html>
