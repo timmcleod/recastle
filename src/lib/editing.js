@@ -41,8 +41,8 @@ export async function finishSaving() {
 
 export const keyFor = (path, file) => `${path}\n${file}`;
 
-// Where each file's cursor was left, to come back to there, as an editor does: key ->
-// { anchor, head }. Not kept once Recastle quits.
+// Where each file was left, to come back to there, as an editor does: key -> { anchor,
+// head, scroll } (see placeOf in codeEditor.js). Not kept once Recastle quits.
 export const positions = new Map();
 
 // A line to show in a file as it opens, or in the file showing, as on going to a

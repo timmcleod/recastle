@@ -1,5 +1,5 @@
 <script setup>
-import { computed, h, markRaw, onBeforeUnmount, onMounted, ref, render, shallowRef, watch } from "vue";
+import { computed, h, markRaw, nextTick, onBeforeUnmount, onMounted, ref, render, shallowRef, watch } from "vue";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { invoke } from "@tauri-apps/api/core";
 import { CircleAlert, ExternalLink, Save } from "lucide-vue-next";
@@ -113,10 +113,14 @@ const isMarkdown = computed(() => /\.(md|markdown|mdown|mkdn?)$/i.test(props.fil
 const previewing = ref(false);
 const previewHtml = ref("");
 const rendering = ref(false);
+// How far the text was scrolled as the preview hid it, for coming back to, as the
+// editor hidden reads as scrolled to the top.
+let scrollBeforePreview = null;
 
 async function showPreview() {
   if (!view) return;
   const file = props.file;
+  scrollBeforePreview = view.scrollSnapshot();
   previewing.value = true;
   rendering.value = true;
   const html = await invoke("render_markdown", { path: props.path, file, text: view.state.doc.toString() }).catch(() => "");
@@ -126,9 +130,12 @@ async function showPreview() {
   rendering.value = false;
 }
 
-function showText() {
+async function showText() {
   previewing.value = false;
   previewHtml.value = "";
+  // Shown again before it can scroll.
+  await nextTick();
+  if (scrollBeforePreview) view?.dispatch({ effects: scrollBeforePreview });
   view?.focus();
 }
 
@@ -172,7 +179,7 @@ function hooks() {
 function leave() {
   clearTimeout(autosaveTimer);
   if (!current || !view) return;
-  positions.set(current.key, cm.selectionOf(view.state));
+  positions.set(current.key, cm.placeOf(view, previewing.value ? scrollBeforePreview : undefined));
   const left = current;
   current = null;
   saving.value = false;
@@ -228,11 +235,8 @@ async function open() {
     saving.value = !!current.writing;
     await showState(state, focus);
     if (seq !== loadSeq) return;
-    // A line asked for, or where it was left, by its edits kept or as last shown.
-    if (!showLineRequested()) {
-      const position = kept ? cm.selectionOf(state) : positions.get(key);
-      if (position) cm.showSelection(view, position);
-    }
+    // A line asked for, or where it was left, or its start.
+    if (!showLineRequested()) cm.showPlace(view, positions.get(key));
     cm.applySettings(view, settingsNow());
     status.value = cm.statusOf(view.state);
     layout.value = { crlf: current.base.crlf, bom: current.base.bom };

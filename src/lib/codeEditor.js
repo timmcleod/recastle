@@ -634,14 +634,33 @@ export function showLine(view, line) {
   view.dispatch({ selection: { anchor: from }, effects: EditorView.scrollIntoView(from, { y: "center" }) });
 }
 
-/** Where the cursor is, to come back to with showSelection. */
-export const selectionOf = (state) => ({ anchor: state.selection.main.anchor, head: state.selection.main.head });
+/**
+ * Where the file was left, to come back to with showPlace: the cursor, and how far it was
+ * scrolled, which scrolling with the wheel leaves apart from the cursor. `scroll` is
+ * passed in for an editor that's hidden, as behind a preview, as its own reads as the top.
+ */
+export const placeOf = (view, scroll = view.scrollSnapshot()) => ({
+  anchor: view.state.selection.main.anchor,
+  head: view.state.selection.main.head,
+  scroll,
+});
 
-/** Puts the cursor back where selectionOf had it, or as near as the text allows, in view. */
-export function showSelection(view, { anchor, head }) {
+/**
+ * Puts the cursor back where placeOf had it, or as near as the text allows, scrolled as
+ * it was. Without a place, the file shows from its start: the one editor shows each file
+ * in turn, and would otherwise show it as far down as the file before was scrolled.
+ */
+export function showPlace(view, place) {
+  if (!place) {
+    view.scrollDOM.scrollTop = 0;
+    view.scrollDOM.scrollLeft = 0;
+    return;
+  }
   const end = view.state.doc.length;
   const at = (pos) => Math.min(pos, end);
-  view.dispatch({ selection: { anchor: at(anchor), head: at(head) }, effects: EditorView.scrollIntoView(at(head), { y: "center" }) });
+  // CodeMirror pulls a snapshot past the end of a file since shortened back to its end.
+  const scroll = place.scroll ?? EditorView.scrollIntoView(at(place.head), { y: "center" });
+  view.dispatch({ selection: { anchor: at(place.anchor), head: at(place.head) }, effects: scroll });
 }
 
 // --- The editor's basics -------------------------------------------------------------
