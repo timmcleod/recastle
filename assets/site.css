@@ -575,7 +575,7 @@ section[id] { scroll-margin-top: 72px; }
 .split-flip > .copy { order: 2; }
 @media (max-width: 980px) { .split, .split-flip { grid-template-columns: minmax(0, 1fr); gap: 40px; } .split-flip > .copy { order: 0; } }
 .copy { display: flex; flex-direction: column; gap: 18px; }
-.copy > p { margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2); }
+.copy > p:not(.eyebrow) { margin: 0; font-size: 17px; line-height: 1.65; color: var(--text2); }
 .copy strong { color: var(--text); font-weight: 600; }
 .ticks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 11px; font-size: 16px; }
 .ticks li { position: relative; padding-left: 30px; }
@@ -664,9 +664,13 @@ section[id] { scroll-margin-top: 72px; }
 
 /* ---------- The agents demo ---------- */
 
-.agent-tabs { display: flex; gap: 4px; flex: 1; min-width: 0; }
-/* Tabs share the row, narrowing as more open */
-.agent-tab { display: flex; align-items: center; flex: 0 1 190px; min-width: 0; border-radius: 9px; border: 1px solid transparent; }
+/* Tabs are as wide as their names (at least 150px) and wrap onto a second row when they don't fit */
+.agent-tabs { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0; }
+.agent-tab { display: flex; align-items: center; min-width: min(150px, 100%); max-width: 100%; border-radius: 9px; border: 1px solid transparent; }
+.agent-tab b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The line under the name fills the tab rather than widening it */
+.agent-tab .window-tab-text { flex: 1; }
+.agent-tab small { width: 0; min-width: 100%; }
 .agent-tab.is-new { animation: fade-in 0.3s ease-out; }
 .agent-tab.is-current { background: var(--win); border-color: var(--win-line); }
 .agent-tab-select {
