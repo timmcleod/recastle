@@ -103,7 +103,6 @@ const HISTORY = [
 export function initWorkflow(root) {
   const $ = (selector) => root.querySelector(selector);
   const stage = root.closest('.demo-stage');
-  const hero = root.closest('.hero');
   const ui = {
     files: $('[data-files]'),
     detail: $('[data-detail]'),
@@ -117,7 +116,6 @@ export function initWorkflow(root) {
     changesCount: $('[data-changes-count]'),
     changesLabel: $('[data-changes-label]'),
     steps: stage.querySelectorAll('[data-step]'),
-    headline: hero ? hero.querySelectorAll('[data-hero-step]') : [],
   };
 
   let state;
@@ -289,12 +287,6 @@ export function initWorkflow(root) {
       const index = order.indexOf(step.dataset.step);
       step.classList.toggle('is-now', index === now);
       step.classList.toggle('is-done', index < now);
-    });
-    if (hero) hero.dataset.phase = state.phase;
-    ui.headline.forEach((sentence) => {
-      const index = order.indexOf(sentence.dataset.heroStep);
-      sentence.classList.toggle('is-lit', index <= now);
-      sentence.classList.toggle('is-now', index === now);
     });
   }
 
